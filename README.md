@@ -14,7 +14,15 @@ It is obviously impossible to create a strategy that edges the house, but by usi
 
 - Always bet on red
 - Martingale
+- Paroli
+- D'Alembert
 - Irfan's strategy
+- Variation of Irfan's strategy
+
+## What is Irfan's strategy?
+
+Irfan's strategy is to bet on 2/3 columns. The 2 columns chosen are the ones that did not appear in the last spin. If a loss in incurred,
+th bet is repeated on the same 2 columns. Variations such as `irfans_with_martingale` and `irfans_with_paroli` are also available and follow the aforementioned strategies with the addition of a martingale or paroli respectively.
 
 ## Usage
 
@@ -30,6 +38,6 @@ Options such as using an american roulette and custom simulation amount are only
 python3 main.py
 ```
 
-## Add strategies
+## Implement custom strategies
 
 To add strategies, add a method in `strategies.py`, and add the method name to the `strategies` dictionary at the end of the file.
