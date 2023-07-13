@@ -24,9 +24,9 @@ questions = [
         "default": "100"
     },
     {
-        "message": "Select the betting strategy",
+        "message": "Select the betting strategy:",
         "type": "rawlist",
-        "choices": list(Strategy().strategies.keys()) + ["all"],
+        "choices": ["all"] + list(Strategy().strategies.keys()),
         "pointer": INQUIRERPY_POINTER_SEQUENCE,
     },
 ]
@@ -40,7 +40,7 @@ result = prompt(
 
 
 def simulate(result, strat):
-  simulations = 2**13 # 8192
+  simulations = 2**14 # 16384
   reached_session_aim = 0
   for _ in range(simulations):
     strategy = Strategy(bankroll=int(result[0]), bet=float(result[1]), session_aim=int(result[2]))
