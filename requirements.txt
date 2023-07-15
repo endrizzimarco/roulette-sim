@@ -2,3 +2,4 @@ matplotlib
 seaborn
 InquirerPy
 PrettyTable
+numpy
