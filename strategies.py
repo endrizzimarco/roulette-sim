@@ -11,18 +11,21 @@ class Strategy:
     last_pocket = 1 # irfans 
     streak = 0 # martingale + paroli + oscars
 
-    def __init__(self, bankroll=100, bet=2.5, session_aim=250, american=False):
+    def __init__(self, bankroll=100, bet=2.5, session_aim=250, max_rounds=0, american=False):
         self.bankroll = bankroll
         self.bet = bet
         self.initial_bet = bet
         self.session_aim = session_aim
+        self.max_rounds = max_rounds
         if american: self.pockets += ["Green"]
 
     def execute(self, strategy="always_red"):
         history = {"bankroll": [], "bets": []}
 
         while 0 < self.bankroll < self.session_aim: 
-            if strategy.startswith("irfans") and 2 * self.bet > self.bankroll:
+            if self.max_rounds and len(history["bankroll"]) == self.max_rounds:
+                break
+            elif strategy.startswith("irfans") and 2 * self.bet > self.bankroll:
                 break
             elif self.bet > self.bankroll:
                 break
@@ -43,9 +46,9 @@ class Strategy:
     def reset_bet(self):
         self.bet = self.initial_bet
 
-    # =========================
-    # ------ STRATEGIES -------
-    # =========================
+    # ===================================
+    # ------ EVEN ODDS STRATEGIES -------
+    # ===================================
     # bet on red every time
     def always_red(self):  
         win = random.choice(self.pockets) == "Red"
@@ -91,24 +94,14 @@ class Strategy:
     # def oscars_grind(self):
 
 
-
+    # ================================
+    # ------ DOZENS STRATEGIES -------
+    # ================================
     # Bet on 2/3 dozens
     def irfans(self):
         roll = random.randint(0, 36)
         win = roll != 0 and get_third(roll) != get_third(self.last_pocket)
         self.update_bankroll(win, irfans=True)
-        self.last_pocket = roll
-
-    # Bet on 2/3 dozens + 0.05 of the bet on 0
-    def irfans_with_0(self):
-        roll = random.randint(0, 36)
-        bet_on_zero = self.bet * 0.05
-        if roll == 0:
-            self.bankroll += (bet_on_zero * 35) - (2 * self.bet)
-        elif get_third(roll) == get_third(self.last_pocket): 
-            self.bankroll -= (2 * self.bet) + bet_on_zero
-        else:
-            self.bankroll += self.bet - bet_on_zero
         self.last_pocket = roll
 
     # Martingale + 2/3 dozens
@@ -155,7 +148,6 @@ class Strategy:
         'paroli': paroli, 
         'dalembert': dalembert,
         'irfans': irfans, 
-        'irfans_with_0': irfans_with_0,
         'irfans_with_martingale': irfans_with_martingale, 
         'irfans_with_paroli': irfans_with_paroli,
         'irfans_with_dalembert': irfans_with_dalembert,
