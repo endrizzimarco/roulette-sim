@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 import numpy as np
 
-sessions = 2**12 # 65,536
+sessions = 2**12 # 4096
 strat = "martingale"
-bankroll = 18 
+bankroll = 50
 bet = 2.5
-session_aim = 56
+session_aim = 100
 max_rounds = 0
 
 def plot_bankroll_and_bet(data):
@@ -80,33 +80,37 @@ def optimise(optimise_bet=False, win_chance=0, max_rounds=0):
   if win_chance > 50: 
     return print("good one")
 
-  best_strategy = ""
-  best_bet = 0
-  best_chance = 0
+  strategies = []
+  bets = []
+  chances = []
 
   for strategy in Strategy().strategies.keys():
     chance = simulate(strat=strategy, max_rounds=max_rounds)["success_rate"]
     if optimise_bet: 
       bet, chance = find_optimal_bet_size(strategy)
-    if chance > best_chance: 
-      if win_chance and chance <= win_chance:
-        continue
-      best_strategy = strategy 
-      best_chance = chance
-      best_bet = bet if optimise_bet else best_bet
-      print(f"New best strategy: {best_strategy}, with chance {best_chance:.2f}%")
+    if win_chance and chance <= win_chance:
+      continue
+    strategies.append(strategy)
+    chances.append(chance)
+    bets.append(bet if optimise_bet else bets)
 
-  if win_chance and not best_chance: 
+  if win_chance and not chances: 
     global session_aim
     session_aim -= 0.1 * session_aim
     print(f"changing session aim to: {session_aim}")
     optimise(optimise_bet, win_chance, max_rounds)
-  return (best_strategy, best_chance) if not optimise_bet else (best_strategy, best_bet, best_chance)
+    
+  if optimise_bet: 
+    result = sorted(zip(strategies, bets, chances), key=lambda x: x[2], reverse=True)
+  else:
+    result = sorted(zip(strategies, chances), key=lambda x: x[1], reverse=True)
+    
+  return result[:3]
 
 
 if __name__ == "__main__":
   data = simulate(max_rounds=40)
   print_stats_table(data)
   # plot_bankroll_and_bet(data)
-  optimise(optimise_bet=False)
+  print(optimise(optimise_bet=True))
 
