@@ -10,6 +10,7 @@ strat = "martingale"
 bankroll = 50
 bet = 2.5
 session_aim = 100
+min_rounds = 0
 max_rounds = 0
 
 def plot_bankroll_and_bet(data):
@@ -22,12 +23,12 @@ def plot_bankroll_and_bet(data):
   plt.legend()
   plt.show()
 
-def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session_aim=session_aim, max_rounds=max_rounds):
+def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session_aim=session_aim, min_rounds=min_rounds, max_rounds=max_rounds):
   reached_session_aim = 0
   bankroll_histories = []
   bets_histories = []
   for _ in range(sessions):
-    strategy = Strategy(bankroll, bet, session_aim, max_rounds)
+    strategy = Strategy(bankroll, bet, session_aim, min_rounds, max_rounds)
     results = strategy.execute(strat)
     bankroll_histories.append(results["bankroll"])
     bets_histories.append(results["bets"])
@@ -50,7 +51,7 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
 
   stats_table = PrettyTable(["Session aim", "1/2 session aim", "Avg rounds", "Median rounds", "Avg W rounds", "Avg L rounds", "Avg @ 10 rounds", "House edge"])
   stats_table.add_row([f"{success_rate:.2f}%", 
-                       f"{half_success_rate * 100:.2f}%", 
+                       f"{half_success_rate:.2f}%", 
                        f"{average_rounds:.2f}", 
                        median_rounds, 
                        f"{average_winning_rounds:.2f}",
@@ -76,7 +77,7 @@ def find_optimal_bet_size(strat):
       # print(f"({strat}) New best bet: {best_bet}, with chance {chance}%")
   return (best_bet, best_chance)
 
-def optimise(optimise_bet=False, win_chance=0, max_rounds=0):
+def optimise(optimise_bet=False, win_chance=0, min_rounds=0, max_rounds=0):
   if win_chance > 50: 
     return print("good one")
 
@@ -85,7 +86,7 @@ def optimise(optimise_bet=False, win_chance=0, max_rounds=0):
   chances = []
 
   for strategy in Strategy().strategies.keys():
-    chance = simulate(strat=strategy, max_rounds=max_rounds)["success_rate"]
+    chance = simulate(strat=strategy, min_rounds=min_rounds, max_rounds=max_rounds)["success_rate"]
     if optimise_bet: 
       bet, chance = find_optimal_bet_size(strategy)
     if win_chance and chance <= win_chance:
@@ -109,8 +110,8 @@ def optimise(optimise_bet=False, win_chance=0, max_rounds=0):
 
 
 if __name__ == "__main__":
-  data = simulate(max_rounds=40)
+  data = simulate(min_rounds=40)
   print_stats_table(data)
   # plot_bankroll_and_bet(data)
-  print(optimise(optimise_bet=True))
+  # print(optimise(optimise_bet=True))
 

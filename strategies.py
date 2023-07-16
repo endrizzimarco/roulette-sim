@@ -11,19 +11,21 @@ class Strategy:
     last_pocket = 1 # irfans 
     streak = 0 # martingale + paroli + oscars
 
-    def __init__(self, bankroll=100, bet=2.5, session_aim=250, max_rounds=0, american=False):
+    def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False):
         self.bankroll = bankroll
         self.bet = bet
         self.initial_bet = bet
-        self.session_aim = session_aim
+        self.session_aim = session_aim if session_aim else float("inf")
+        self.min_rounds = min_rounds
         self.max_rounds = max_rounds
         if american: self.pockets += ["Green"]
 
     def execute(self, strategy="always_red"):
         history = {"bankroll": [], "bets": []}
+        round = 1
 
-        while 0 < self.bankroll < self.session_aim: 
-            if self.max_rounds and len(history["bankroll"]) == self.max_rounds:
+        while 0 < self.bankroll < self.session_aim or round <= self.min_rounds:
+            if self.max_rounds and round > self.max_rounds:
                 break
             elif strategy.startswith("irfans") and 2 * self.bet > self.bankroll:
                 break
@@ -34,6 +36,7 @@ class Strategy:
             self.strategies[strategy](self) 
             history["bankroll"].append(self.bankroll)
             history["bets"].append(self.bet)
+            round += 1
 
         return history
 
