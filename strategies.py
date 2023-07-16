@@ -43,61 +43,51 @@ class Strategy:
         (36, 'Red'),
     ]
 
-    # General parameters
-    bankroll = 0 
-    bet = 0
-    initial_bet = 0
-    session_aim = 0
-
-    # Strategy specific
-    last_pocket = 1 # irfans 
-    streak = 0 # martingale + paroli
-
     def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False):
         self.bankroll = bankroll
-        self.bet = bet
-        self.initial_bet = bet
+        self.bet_unit = bet
+        self.curr_bet = bet
         self.session_aim = session_aim if session_aim else float('inf')
         self.min_rounds = min_rounds
         self.max_rounds = max_rounds
+        self.history = {'bankroll': [], 'bets': [], 'rolls': []}
+        self.round = 1
+        self.streak = 0 # martingale + paroli
         if american: self.roulette += [(-1, 'Green')]
 
     def execute(self, strategy='always_red'):
-        history = {'bankroll': [], 'bets': [], 'rolls': []}
-        round = 1
-
-        while 0 < self.bankroll < self.session_aim or round <= self.min_rounds:
-            if self.max_rounds and round > self.max_rounds:
+        while 0 < self.bankroll < self.session_aim or self.round <= self.min_rounds:
+            if self.max_rounds and self.round > self.max_rounds:
                 break
-            elif strategy.startswith('irfans') and 2 * self.bet > self.bankroll:
+            elif strategy.startswith('irfans') and 2 * self.curr_bet > self.bankroll:
                 break
-            elif self.bet > self.bankroll:
+            elif self.curr_bet > self.bankroll:
                 break
 
             # run strategy
             roll = random.choice(self.roulette)
-            self.strategies[strategy](self, {'pocket': roll[0], 'color': roll[1], })
+            self.strategies[strategy](self, {'pocket': roll[0], 'color': roll[1]})
             # update historical data
-            history['bankroll'].append(self.bankroll)
-            history['bets'].append(self.bet)
-            history['rolls'].append(roll)
-            round += 1
+            self.history['bankroll'].append(self.bankroll)
+            self.history['bets'].append(self.curr_bet)
+            self.history['rolls'].append(roll)
+            self.round += 1
 
-        return history
+        return self.history
 
     def update_bankroll(self, win, dozens=False):
         if win:
-            self.bankroll += self.bet 
+            self.bankroll += self.curr_bet 
         else:
-            self.bankroll -= self.bet if not dozens else 2 * self.bet
+            self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
 
     def reset_bet(self):
-        self.bet = self.initial_bet
+        self.curr_bet = self.bet_unit
 
-    # ===================================
-    # ------ EVEN ODDS STRATEGIES -------
-    # ===================================
-    # bet on Red every time
+    # ======================================
+    # ------ EVEN CHANCES STRATEGIES -------
+    # ======================================
+    # bet on red every time
     def always_red(self, roll):  
         win = roll['color'] == 'Red'
         self.update_bankroll(win)
@@ -109,31 +99,45 @@ class Strategy:
         if win:
             self.reset_bet()
         else:
-            self.bet *= 2
+            self.curr_bet *= 2
 
     # increase and decrease bets by 1 unit on win and loss respectively
     def dalembert(self, roll):
         win = roll['color'] == 'Red'
         self.update_bankroll(win)
         if win:
-            self.bet += self.initial_bet 
-        elif self.bet > self.initial_bet:
-            self.bet -= self.initial_bet
+            self.curr_bet += self.bet_unit 
+        elif self.curr_bet > self.bet_unit:
+            self.curr_bet -= self.bet_unit
 
     # increase bets by 1 unit and reset after 3 wins
     def paroli(self, roll):
         win = roll['color'] == 'Red'
         self.update_bankroll(win)
         if win:
-            self.bet *= 2
+            self.curr_bet *= 2
             self.streak += 1
             if self.streak == 3:
                 self.reset_bet()
         else:
-            self.bet = self.initial_bet
+            self.curr_bet = self.bet_unit
             self.streak = 0
-            
-    # def tier_et_tout(self):
+
+    # A simpler version of this: https://www.888casino.com/blog/tier-et-tout
+    # TODO: come back to this
+    def tier_et_tout(self, roll):
+        self.bet_unit = int(1/9 * self.bankroll)
+        if self.round == 1: 
+            self.curr_bet = self.bet_unit * 3
+
+        win = roll['color'] == "Red"
+        if win: 
+            self.bankroll += self.curr_bet
+            self.curr_bet = self.bet_unit * 3
+        else:
+            self.bankroll -= self.curr_bet
+            self.curr_bet = self.bet_unit * 6
+
 
     # TODO: 
     # def labouchere(self):
@@ -147,51 +151,72 @@ class Strategy:
     # ================================
     # Bet on 2/3 dozens, based on last dozen rolled 
     def irfans(self, roll):
-        same_dozens = get_dozen(roll['pocket']) == get_dozen(self.last_pocket)
-        win = not same_dozens and pocket_not_0(roll)
+        same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
+        win = not same_last_dozen and pocket_not_0(roll)
         self.update_bankroll(win, dozens=True)
-        self.last_pocket = roll['pocket']
+        self.last_roll = roll['pocket']
 
     # Martingale + 2/3 dozens
     def irfans_with_martingale(self, roll):
-        same_dozens = get_dozen(roll['pocket']) == get_dozen(self.last_pocket)
-        win = not same_dozens and pocket_not_0(roll)
+        same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
+        win = not same_last_dozen and pocket_not_0(roll)
         self.update_bankroll(win, dozens=True)
         if win: 
             self.reset_bet()
         else:
-            self.bet *= 2
-        self.last_pocket = roll['pocket']
+            self.curr_bet *= 2
+        self.last_roll = roll['pocket']
     
     # Dalembert + 2/3 dozens
     def irfans_with_dalembert(self, roll):
-        same_dozens = get_dozen(roll['pocket']) == get_dozen(self.last_pocket)
-        win = not same_dozens and pocket_not_0(roll)
+        same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
+        win = not same_last_dozen and pocket_not_0(roll)
         self.update_bankroll(win, dozens=True)
         if win:
-            self.bet += self.initial_bet 
-        elif self.bet > self.initial_bet:
-            self.bet -= self.initial_bet
-        self.last_pocket = roll['pocket']
+            self.curr_bet += self.bet_unit 
+        elif self.curr_bet > self.bet_unit:
+            self.curr_bet -= self.bet_unit
+        self.last_roll = roll['pocket']
 
     # Paroli + 2/3 dozens
     def irfans_with_paroli(self, roll):
-        last_dozen = get_dozen(roll['pocket']) == get_dozen(self.last_pocket)
-        win = not last_dozen and pocket_not_0(roll)
+        same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
+        win = not same_last_dozen and pocket_not_0(roll)
         self.update_bankroll(win, dozens=True)
         if win:
-            self.bet *= 2
+            self.curr_bet *= 2
             self.streak += 1
             if self.streak == 3:
                 self.reset_bet()
         else:
-            self.bet = self.initial_bet
+            self.curr_bet = self.bet_unit
             self.streak = 0
-        self.last_pocket = roll['pocket']
+        self.last_roll = roll['pocket']
 
     # ==============================
     # ------ MISC STRATEGIES -------
     # ==============================
+    # https://www.888casino.com/blog/kavouras-bet
+    def kavouras(self, roll):
+        pocket = roll['pocket']
+        # corner
+        if pocket in range(0, 4): 
+            self.bankroll += self.bet_unit 
+        else: 
+            self.bankroll -= self.bet_unit
+
+        # double street
+        if pocket in range(31, 37):
+            self.bankroll += self.bet_unit * 4 
+        else: 
+            self.bankroll -= self.bet_unit * 2
+
+        # splits
+        splits = list(range(8, 12)) + list(range(15, 19)) + list(range(17, 21)) + list(range(27, 31))
+        if pocket in splits:
+            self.bankroll += self.bet_unit * 10
+        else:
+            self.bankroll -= self.bet_unit * 5
 
 
     strategies = {
@@ -203,6 +228,8 @@ class Strategy:
         'irfans_with_martingale': irfans_with_martingale, 
         'irfans_with_paroli': irfans_with_paroli,
         'irfans_with_dalembert': irfans_with_dalembert,
+        'kavouras': kavouras,
+        'tier_et_tout': tier_et_tout,
     }
 
 
@@ -213,3 +240,6 @@ def get_dozen(n):
 
 def pocket_not_0(roll): 
     return roll['pocket'] != 0 and roll['pocket'] != -1
+
+def last_roll(self):
+    return self.history['rolls'][-1][0] if self.history['rolls'] else 1
