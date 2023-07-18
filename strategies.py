@@ -1,4 +1,5 @@
 import random
+import math
 
 
 class Strategy: 
@@ -50,10 +51,16 @@ class Strategy:
         self.session_aim = session_aim if session_aim else float('inf')
         self.min_rounds = min_rounds
         self.max_rounds = max_rounds
+        
+        # meta
         self.history = {'bankroll': [], 'bets': [], 'rolls': []}
         self.round = 1
-        self.streak = 0 # martingale + paroli
         if american: self.roulette += [(-1, 'Green')]
+
+        # strategy specific
+        self.streak = 0 # martingale + paroli
+        self.progression = [] # johnson progression
+        self.progression_pointer = 0
 
     def execute(self, strategy='always_red'):
         while 0 < self.bankroll < self.session_aim or self.round <= self.min_rounds:
@@ -126,7 +133,7 @@ class Strategy:
     # A simpler version of this: https://www.888casino.com/blog/tier-et-tout
     # TODO: come back to this
     def tier_et_tout(self, roll):
-        self.bet_unit = int(1/9 * self.bankroll)
+        self.bet_unit = math.ceil(1/9 * self.bankroll)
         if self.round == 1: 
             self.curr_bet = self.bet_unit * 3
 
@@ -139,9 +146,39 @@ class Strategy:
             self.curr_bet = self.bet_unit * 6
 
 
-    # TODO: 
-    # def labouchere(self):
-        
+    # 1-2-3-4 labouchere progression
+    def labouchere(self, roll):
+        win = roll['color'] == 'Red'
+        if self.round == 1: 
+            unit = math.ceil((self.session_aim - self.bankroll) / 10 / self.bet_unit)
+            self.progression = [unit, unit*2, unit*3, unit*4]
+
+        bet_units = get_round_units(self)
+        self.curr_bet = bet_units * self.bet_unit
+        self.update_bankroll(win)
+
+        if win: 
+            self.progression = self.progression[1:-1] # remove first and last elements
+        else:
+            self.progression.append(bet_units)
+            
+
+    # https://www.roulettelife.com/index.php?topic=9.0
+    def johnson_progression(self, roll): 
+        win = roll['color'] == 'Red'
+        if self.round == 1: 
+            unit = math.ceil((self.session_aim - self.bankroll) / 20 / self.bet_unit)
+            self.progression = [unit] * 20
+
+        bet_units = get_round_units(self)
+        self.curr_bet = bet_units * self.bet_unit
+        self.update_bankroll(win)
+
+        if win: 
+            self.progression = self.progression[1:-1] # remove first and last elements
+        else: 
+            distribute_losses(self, bet_units)
+
     # TODO: 
     # def oscars_grind(self):
 
@@ -230,6 +267,8 @@ class Strategy:
         'irfans_with_dalembert': irfans_with_dalembert,
         'kavouras': kavouras,
         'tier_et_tout': tier_et_tout,
+        'labouchere': labouchere,
+        'johnson_progression': johnson_progression,
     }
 
 
@@ -243,3 +282,21 @@ def pocket_not_0(roll):
 
 def last_roll(self):
     return self.history['rolls'][-1][0] if self.history['rolls'] else 1
+
+def get_round_units(self):
+    bet_units = 0
+    if not self.progression: 
+        Exception("Progression is empty")
+    elif len(self.progression) == 1: 
+        bet_units = self.progression[0]
+    else:
+        bet_units = self.progression[0] + self.progression[-1]
+    return bet_units
+
+def distribute_losses(self, to_distribute):
+    while to_distribute > 0: 
+        if self.progression_pointer > len(self.progression) - 1:
+            self.progression_pointer = 0
+        self.progression[self.progression_pointer] += 1
+        self.progression_pointer += 1
+        to_distribute -= 1
