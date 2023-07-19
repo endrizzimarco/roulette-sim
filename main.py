@@ -1,11 +1,11 @@
+from prettytable import PrettyTable
+import matplotlib.pyplot as plt
 from strategies import Strategy
 from statistics import median
 import seaborn as sns
-import matplotlib.pyplot as plt
-from prettytable import PrettyTable
 import numpy as np
 
-sessions = 2**12 # 4096
+sessions = 2**14 # 4096
 strat = "martingale"
 bankroll = 50
 bet = 2.5
@@ -18,8 +18,8 @@ def plot_bankroll_and_bet(data):
   plt.ylabel("Amount (£)")
   plt.xlabel("Rounds")
   plt.title(f"Bankroll and Bet over time for final session ({strat})")
-  plt.plot(data["bankroll_histories"][-1], label ="Bankroll")
-  plt.plot(data["bets_histories"][-1], label="Bet")
+  plt.plot(data["bankroll"][-1], label ="Bankroll")
+  plt.plot(data["bets"][-1], label="Bet")
   plt.legend()
   plt.show()
 
@@ -33,6 +33,7 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
     bankroll_histories.append(results["bankroll"])
     bets_histories.append(results["bets"])
 
+  # print(bankroll_histories[-1])
   total_rounds = [len(session) for session in bankroll_histories]
   average_rounds = sum(total_rounds) / len(total_rounds)
   median_rounds = median(total_rounds)
@@ -44,14 +45,14 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
   reached_session_aim = [session for session in bankroll_histories if session[-1] >= session_aim]
   success_rate = len(reached_session_aim)/sessions * 100
   reached_half_session_aim = [session for session in bankroll_histories if any(bankroll >= session_aim/2 for bankroll in session)]
-  half_success_rate = len(reached_half_session_aim)/sessions * 100
+  close_success_rate = len(reached_half_session_aim)/sessions * 100
 
   average_bankroll_after_10_rounds = sum([session[10] if len(session) > 10 else 0 for session in bankroll_histories]) / len(bankroll_histories)
   average_final_bankroll = sum([session[-1] for session in bankroll_histories]) / len(bankroll_histories)
 
-  stats_table = PrettyTable(["Session aim", "1/2 session aim", "Avg rounds", "Median rounds", "Avg W rounds", "Avg L rounds", "Avg @ 10 rounds", "House edge"])
+  stats_table = PrettyTable(["Session aim", "3/4 session aim", "Avg rounds", "Median rounds", "Avg W rounds", "Avg L rounds", "Avg @ 10 rounds", "House edge"])
   stats_table.add_row([f"{success_rate:.2f}%", 
-                       f"{half_success_rate:.2f}%", 
+                       f"{close_success_rate:.2f}%", 
                        f"{average_rounds:.2f}", 
                        median_rounds, 
                        f"{average_winning_rounds:.2f}",
@@ -78,9 +79,6 @@ def find_optimal_bet_size(strat):
   return (best_bet, best_chance)
 
 def optimise(optimise_bet=False, win_chance=0, min_rounds=0, max_rounds=0):
-  if win_chance > 50: 
-    return print("good one")
-
   strategies = []
   bets = []
   chances = []
@@ -110,8 +108,8 @@ def optimise(optimise_bet=False, win_chance=0, min_rounds=0, max_rounds=0):
 
 
 if __name__ == "__main__":
-  data = simulate(min_rounds=40)
+  data = simulate()
   print_stats_table(data)
   # plot_bankroll_and_bet(data)
-  # print(optimise(optimise_bet=True))
+  print(optimise(optimise_bet=True))
 

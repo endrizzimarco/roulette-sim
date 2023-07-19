@@ -146,12 +146,13 @@ class Strategy:
             self.curr_bet = self.bet_unit * 6
 
 
-    # 1-2-3-4 labouchere progression
+    # standard labouchere progression with lenght based on profit goal 
     def labouchere(self, roll):
         win = roll['color'] == 'Red'
         if self.round == 1: 
-            unit = math.ceil((self.session_aim - self.bankroll) / 10 / self.bet_unit)
-            self.progression = [unit, unit*2, unit*3, unit*4]
+            unit, progression_len = find_progression_len(self)
+            print(unit, progression_len)
+            self.progression = [unit * i for i in range(progression_len)]
 
         bet_units = get_round_units(self)
         self.curr_bet = bet_units * self.bet_unit
@@ -167,8 +168,9 @@ class Strategy:
     def johnson_progression(self, roll): 
         win = roll['color'] == 'Red'
         if self.round == 1: 
-            unit = math.ceil((self.session_aim - self.bankroll) / 20 / self.bet_unit)
-            self.progression = [unit] * 20
+            progression_len = 20 if not self.min_rounds else self.min_rounds
+            unit = math.ceil((self.session_aim - self.bankroll) / self.bet_unit)
+            self.progression = [unit * i for i in range(progression_len)]
 
         bet_units = get_round_units(self)
         self.curr_bet = bet_units * self.bet_unit
@@ -179,8 +181,18 @@ class Strategy:
         else: 
             distribute_losses(self, bet_units)
 
-    # TODO: 
-    # def oscars_grind(self):
+    # https://www.888casino.com/blog/hollandish-roulette-system
+    def hollandish(self, roll):
+        win = roll['color'] == 'Red'
+        self.update_bankroll(win)
+
+        if win: 
+            self.streak -= 1 
+            if self.streak == 0: 
+                self.curr_bet += 2 * self.bet_unit
+        else:
+            self.streak += 1
+            
 
 
     # ================================
@@ -255,6 +267,25 @@ class Strategy:
         else:
             self.bankroll -= self.bet_unit * 5
 
+    # https://www.888casino.com/blog/4-pillars-system-notes-madman
+    def four_pillars(self, roll):
+        pocket = roll['pocket']
+
+        if pocket in range(4, 10) or pocket in range(25, 31):
+            pass # WHY EVEN BET ON THESE??????
+        else: 
+            self.bankroll -= self.bet_unit
+            
+        if pocket in [19, 20, 22, 23, 31, 32, 34, 35]:
+            self.bankroll += self.bet_unit * 3
+        else: 
+            self.bankroll -= self.bet_unit * 2
+            
+        if pocket in [14, 15, 17, 18]:
+            self.bankroll += self.bet_unit * 12
+        else: 
+            self.bankroll -= self.bet_unit * 2
+
 
     strategies = {
         'always_red': always_red, 
@@ -269,6 +300,8 @@ class Strategy:
         'tier_et_tout': tier_et_tout,
         'labouchere': labouchere,
         'johnson_progression': johnson_progression,
+        'four_pillars': four_pillars,
+        'hollandish': hollandish,
     }
 
 
@@ -282,6 +315,24 @@ def pocket_not_0(roll):
 
 def last_roll(self):
     return self.history['rolls'][-1][0] if self.history['rolls'] else 1
+
+def find_progression_len(self):
+    # TODO: min rounds
+    # FIXME: broken
+    units_to_make = math.ceil((self.session_aim - self.bankroll) / self.bet_unit) # 180 
+    i = 3 # min progression len
+    while True: 
+        unit = math.ceil(units_to_make / i)
+        total = 0
+        for x in range(i):
+            total += unit * x
+        if i < 10: 
+            print(total, unit, i)
+        if total <= self.bankroll: 
+            print("WTFF")
+            break
+        i += 1
+    return (unit, math.factorial(i))
 
 def get_round_units(self):
     bet_units = 0
