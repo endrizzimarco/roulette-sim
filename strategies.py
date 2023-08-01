@@ -1,49 +1,48 @@
 import random
 import math
 
+# European roulette wheel
+roulette = [
+    (0, 'Green'),
+    (1, 'Red'),
+    (2, 'Black'),
+    (3, 'Red'),
+    (4, 'Black'),
+    (5, 'Red'),
+    (6, 'Black'),
+    (7, 'Red'),
+    (8, 'Black'),
+    (9, 'Red'),
+    (10, 'Black'),
+    (11, 'Black'),
+    (12, 'Red'),
+    (13, 'Black'),
+    (14, 'Red'),
+    (15, 'Black'),
+    (16, 'Red'),
+    (17, 'Black'),
+    (18, 'Red'),
+    (19, 'Red'),
+    (20, 'Black'),
+    (21, 'Red'),
+    (22, 'Black'),
+    (23, 'Red'),
+    (24, 'Black'),
+    (25, 'Red'),
+    (26, 'Black'),
+    (27, 'Red'),
+    (28, 'Black'),
+    (29, 'Black'),
+    (30, 'Red'),
+    (31, 'Black'),
+    (32, 'Red'),
+    (33, 'Black'),
+    (34, 'Red'),
+    (35, 'Black'),
+    (36, 'Red'),
+]
 
 class Strategy: 
-    # European roulette wheel
-    roulette = [
-        (0, 'Green'),
-        (1, 'Red'),
-        (2, 'Black'),
-        (3, 'Red'),
-        (4, 'Black'),
-        (5, 'Red'),
-        (6, 'Black'),
-        (7, 'Red'),
-        (8, 'Black'),
-        (9, 'Red'),
-        (10, 'Black'),
-        (11, 'Black'),
-        (12, 'Red'),
-        (13, 'Black'),
-        (14, 'Red'),
-        (15, 'Black'),
-        (16, 'Red'),
-        (17, 'Black'),
-        (18, 'Red'),
-        (19, 'Red'),
-        (20, 'Black'),
-        (21, 'Red'),
-        (22, 'Black'),
-        (23, 'Red'),
-        (24, 'Black'),
-        (25, 'Red'),
-        (26, 'Black'),
-        (27, 'Red'),
-        (28, 'Black'),
-        (29, 'Black'),
-        (30, 'Red'),
-        (31, 'Black'),
-        (32, 'Red'),
-        (33, 'Black'),
-        (34, 'Red'),
-        (35, 'Black'),
-        (36, 'Red'),
-    ]
-
     def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False):
         self.bankroll = bankroll
         self.bet_unit = bet
@@ -55,12 +54,13 @@ class Strategy:
         # meta
         self.history = {'bankroll': [], 'bets': [], 'rolls': []}
         self.round = 1
-        if american: self.roulette += [(-1, 'Green')]
+        global roulette
+        if american: roulette += [(-1, 'Green')]
 
         # strategy specific
-        self.streak = 0 # martingale + paroli
+        self.streak = 0 # martingale + paroli + hollandish
         self.progression = [] # johnson progression
-        self.progression_pointer = 0
+        self.progression_pointer = 0 # johnson progression
 
     def execute(self, strategy='always_red'):
         while 0 < self.bankroll < self.session_aim or self.round <= self.min_rounds:
@@ -72,7 +72,7 @@ class Strategy:
                 break
 
             # run strategy
-            roll = random.choice(self.roulette)
+            roll = random.choice(roulette)
             self.strategies[strategy](self, {'pocket': roll[0], 'color': roll[1]})
             # update historical data
             self.history['bankroll'].append(self.bankroll)
@@ -151,7 +151,6 @@ class Strategy:
         win = roll['color'] == 'Red'
         if self.round == 1: 
             unit, progression_len = find_progression_len(self)
-            print(unit, progression_len)
             self.progression = [unit * i for i in range(progression_len)]
 
         bet_units = get_round_units(self)
@@ -192,8 +191,6 @@ class Strategy:
                 self.curr_bet += 2 * self.bet_unit
         else:
             self.streak += 1
-            
-
 
     # ================================
     # ------ DOZENS STRATEGIES -------
@@ -247,7 +244,9 @@ class Strategy:
     # ==============================
     # https://www.888casino.com/blog/kavouras-bet
     def kavouras(self, roll):
+        self.curr_bet = 8 * self.bet_unit
         pocket = roll['pocket']
+
         # corner
         if pocket in range(0, 4): 
             self.bankroll += self.bet_unit 
@@ -269,12 +268,13 @@ class Strategy:
 
     # https://www.888casino.com/blog/4-pillars-system-notes-madman
     def four_pillars(self, roll):
+        self.curr_bet = 6 * self.bet_unit
         pocket = roll['pocket']
 
         if pocket in range(4, 10) or pocket in range(25, 31):
-            pass # WHY EVEN BET ON THESE??????
+            self.bankroll -= self.bet_unit # what ?
         else: 
-            self.bankroll -= self.bet_unit
+            self.bankroll -= self.bet_unit * 2
             
         if pocket in [19, 20, 22, 23, 31, 32, 34, 35]:
             self.bankroll += self.bet_unit * 3
@@ -285,7 +285,19 @@ class Strategy:
             self.bankroll += self.bet_unit * 12
         else: 
             self.bankroll -= self.bet_unit * 2
+            
 
+    # https://www.888casino.com/blog/positional-roulette#how-to-play-positional-roulette
+    def positional_roulette(self, roll):
+        self.curr_bet = self.bet_unit * 8
+        if self.round < 38:
+            pass # build data on uncommon numbers
+        else:
+            winning_pockets = find_positional_numbers(self) # bet on 8 numbers
+            if roll["pocket"] in winning_pockets:
+                self.bankroll += self.bet_unit * (35 - len(winning_pockets)-1)
+            else: 
+                self.bankroll -= self.bet_unit * len(winning_pockets)
 
     strategies = {
         'always_red': always_red, 
@@ -302,6 +314,7 @@ class Strategy:
         'johnson_progression': johnson_progression,
         'four_pillars': four_pillars,
         'hollandish': hollandish,
+        'positional_roulette': positional_roulette
     }
 
 
@@ -317,22 +330,17 @@ def last_roll(self):
     return self.history['rolls'][-1][0] if self.history['rolls'] else 1
 
 def find_progression_len(self):
-    # TODO: min rounds
-    # FIXME: broken
-    units_to_make = math.ceil((self.session_aim - self.bankroll) / self.bet_unit) # 180 
+    units_to_make = math.ceil((self.session_aim - self.bankroll) / self.bet_unit)
     i = 3 # min progression len
     while True: 
-        unit = math.ceil(units_to_make / i)
         total = 0
+        unit = math.ceil(units_to_make / i)
         for x in range(i):
             total += unit * x
-        if i < 10: 
-            print(total, unit, i)
-        if total <= self.bankroll: 
-            print("WTFF")
+        if self.bankroll >= total: 
             break
         i += 1
-    return (unit, math.factorial(i))
+    return (unit, i)
 
 def get_round_units(self):
     bet_units = 0
@@ -351,3 +359,36 @@ def distribute_losses(self, to_distribute):
         self.progression[self.progression_pointer] += 1
         self.progression_pointer += 1
         to_distribute -= 1
+
+def find_positional_numbers(self):
+    all_n = set(range(1, 37))
+    appeared_n = set(roll[0] for roll in self.history['rolls'])
+    uncommon_n = all_n - appeared_n
+
+    prev_pocket, prev_color = self.history["rolls"][-1]
+    if prev_color == "Green": prev_color = "Red"
+    selected_pockets = []
+
+    def get_next_pocket_index(index):
+        return (index + 1) % len(roulette)
+
+    def get_prev_pocket_index(index):
+        return (index - 1) % len(roulette)
+    
+    cycle_count = 0
+    i = get_next_pocket_index(prev_pocket)
+    while len(selected_pockets) < 8:
+        n, color = roulette[i]
+        if color == prev_color and n not in selected_pockets and n not in uncommon_n:
+            selected_pockets.append(n)
+        else:
+            cycle_count += 1
+
+        if cycle_count >= len(roulette):
+            break  # If we've gone through all pockets without finding new ones, break out of the loop
+
+        if len(selected_pockets) < 4: 
+            i = get_next_pocket_index(i) # find next 4 numbers
+        else:
+            i = get_prev_pocket_index(i) # find previous 4 numbers
+    return selected_pockets
