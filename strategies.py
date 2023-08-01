@@ -42,8 +42,10 @@ roulette = [
     (36, 'Red'),
 ]
 
+baccarat_odds = [50.68, 49.32]
+
 class Strategy: 
-    def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False):
+    def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
         self.bankroll = bankroll
         self.bet_unit = bet
         self.curr_bet = bet
@@ -56,6 +58,7 @@ class Strategy:
         self.round = 1
         global roulette
         if american: roulette += [(-1, 'Green')]
+        self.baccarat = baccarat
 
         # strategy specific
         self.streak = 0 # martingale + paroli + hollandish
@@ -72,7 +75,10 @@ class Strategy:
                 break
 
             # run strategy
-            roll = random.choice(roulette)
+            if self.baccarat: 
+                roll = (None, random.choices(['Red', 'Black'], weights=baccarat_odds)[0])
+            else: 
+                roll = random.choice(roulette)
             self.strategies[strategy](self, {'pocket': roll[0], 'color': roll[1]})
             # update historical data
             self.history['bankroll'].append(self.bankroll)
@@ -84,7 +90,7 @@ class Strategy:
 
     def update_bankroll(self, win, dozens=False):
         if win:
-            self.bankroll += self.curr_bet 
+            self.bankroll += self.curr_bet if not self.baccarat else self.curr_bet * 0.95
         else:
             self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
 

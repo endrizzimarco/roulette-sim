@@ -12,6 +12,7 @@ bet = 2.5
 session_aim = 100
 min_rounds = 0
 max_rounds = 0
+baccarat = True
 
 def plot_bankroll_and_bet(data):
   sns.set_style("darkgrid")
@@ -23,12 +24,12 @@ def plot_bankroll_and_bet(data):
   plt.legend()
   plt.show()
 
-def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session_aim=session_aim, min_rounds=min_rounds, max_rounds=max_rounds):
+def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session_aim=session_aim, min_rounds=min_rounds, max_rounds=max_rounds, baccarat=baccarat):
   reached_session_aim = 0
   bankroll_histories = []
   bets_histories = []
   for _ in range(sessions):
-    strategy = Strategy(bankroll, bet, session_aim, min_rounds, max_rounds)
+    strategy = Strategy(bankroll, bet, session_aim, min_rounds, max_rounds, baccarat=baccarat)
     results = strategy.execute(strat)
     bankroll_histories.append(results["bankroll"])
     bets_histories.append(results["bets"])
@@ -44,8 +45,8 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
 
   reached_session_aim = [session for session in bankroll_histories if session[-1] >= session_aim]
   success_rate = len(reached_session_aim)/sessions * 100
-  reached_half_session_aim = [session for session in bankroll_histories if any(bankroll >= session_aim/2 for bankroll in session)]
-  close_success_rate = len(reached_half_session_aim)/sessions * 100
+  reached_close_session_aim = [session for session in bankroll_histories if any(bankroll >= session_aim*0.75 for bankroll in session)]
+  close_success_rate = len(reached_close_session_aim)/sessions * 100
 
   average_bankroll_after_10_rounds = sum([session[10] if len(session) > 10 else 0 for session in bankroll_histories]) / len(bankroll_histories)
   average_final_bankroll = sum([session[-1] for session in bankroll_histories]) / len(bankroll_histories)
@@ -59,7 +60,8 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
                        f"{average_losing_rounds:.2f}",
                        f"£{average_bankroll_after_10_rounds:.2f}", 
                        f"{(bankroll - average_final_bankroll)/bankroll * 100:.2f}%"])
-
+  
+  print(bankroll_histories[-1])
   return {"bankroll": bankroll_histories, "bets": bets_histories, "success_rate": success_rate, "stats_table": stats_table}
 
 def print_stats_table(data):
@@ -111,5 +113,5 @@ if __name__ == "__main__":
   data = simulate()
   print_stats_table(data)
   # plot_bankroll_and_bet(data)
-  print(optimise(optimise_bet=True))
+  # print(optimise(optimise_bet=False))
 
