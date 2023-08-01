@@ -42,7 +42,7 @@ roulette = [
     (36, 'Red'),
 ]
 
-baccarat_odds = [50.68, 49.32]
+baccarat_odds = [50.68, 49.32] # banker (viz excluded), player
 
 class Strategy: 
     def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
@@ -63,7 +63,7 @@ class Strategy:
         # strategy specific
         self.streak = 0 # martingale + paroli + hollandish
         self.progression = [] # johnson progression
-        self.progression_pointer = 0 # johnson progression
+        self.pointer = 0 # johnson progression
 
     def execute(self, strategy='always_red'):
         while 0 < self.bankroll < self.session_aim or self.round <= self.min_rounds:
@@ -113,6 +113,8 @@ class Strategy:
             self.reset_bet()
         else:
             self.curr_bet *= 2
+    
+    # TODO: triple martingale
 
     # increase and decrease bets by 1 unit on win and loss respectively
     def dalembert(self, roll):
@@ -135,6 +137,61 @@ class Strategy:
         else:
             self.curr_bet = self.bet_unit
             self.streak = 0
+    
+    # parlay TODO:
+
+    # when you lose you move up the sequence, when you win you move down the sequence x2
+    def fibonacci(self, roll):
+        sequence = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610]
+        win = roll['color'] == 'Red'
+        self.update_bankroll(win)
+        if win: 
+            self.streak -= 2 if self.streak > 2 else 0
+        else: 
+            self.streak += 1 
+        self.curr_bet = sequence[self.streak] * self.bet_unit
+
+    # simple template for progression strategies
+    def progression_strat(self, roll, progression):
+        win = roll['color'] == 'Red'
+        self.update_bankroll(win)
+        if win:
+            self.streak += 1
+            if self.streak < len(progression):
+                self.curr_bet = progression[self.streak] * self.bet_unit
+            else: 
+                self.streak = 0
+        else: 
+            self.reset_bet()
+            self.streak = 0 
+
+    # the classic 1-3-2-6 baccarat progression
+    def one_three_two_six(self, roll):
+        progression = [1, 3, 2, 6]
+        self.progression_strat(roll, progression)
+        
+    # the most optimal progression for doubling your money according to progressions_sim.py
+    def one_four_eight(self, roll):
+        progression = [1, 4, 8]
+        self.progression_strat(roll, progression)
+
+    # simple progression with 2,1,2. When you complete sequence you raise the bet by 1 until you lose
+    def manhattan(self, roll):
+        progression = [2, 1, 2]
+        if self.round == 1: 
+            self.curr_bet = self.bet_unit * 2
+
+        win = roll['color'] == 'Red'
+        self.update_bankroll(win)
+        if win:
+            self.pointer += 1
+            if self.pointer >= len(progression):
+                self.streak += 1
+                self.pointer = 0
+        else: 
+            self.pointer = 0 
+            self.streak = 0
+        self.curr_bet = progression[self.pointer] * self.bet_unit + self.streak
 
     # A simpler version of this: https://www.888casino.com/blog/tier-et-tout
     # TODO: come back to this
@@ -170,7 +227,7 @@ class Strategy:
             
 
     # https://www.roulettelife.com/index.php?topic=9.0
-    def johnson_progression(self, roll): 
+    def johnson_progression(self, roll):
         win = roll['color'] == 'Red'
         if self.round == 1: 
             progression_len = 20 if not self.min_rounds else self.min_rounds
@@ -310,6 +367,10 @@ class Strategy:
         'martingale': martingale, 
         'paroli': paroli, 
         'dalembert': dalembert,
+        'fibonacci': fibonacci,
+        'one_three_two_six': one_three_two_six,
+        'one_four_eight': one_four_eight,
+        'manhattan': manhattan,
         'irfans': irfans, 
         'irfans_with_martingale': irfans_with_martingale, 
         'irfans_with_paroli': irfans_with_paroli,
@@ -360,10 +421,10 @@ def get_round_units(self):
 
 def distribute_losses(self, to_distribute):
     while to_distribute > 0: 
-        if self.progression_pointer > len(self.progression) - 1:
-            self.progression_pointer = 0
-        self.progression[self.progression_pointer] += 1
-        self.progression_pointer += 1
+        if self.pointer > len(self.progression) - 1:
+            self.pointer = 0
+        self.progression[self.pointer] += 1
+        self.pointer += 1
         to_distribute -= 1
 
 def find_positional_numbers(self):
