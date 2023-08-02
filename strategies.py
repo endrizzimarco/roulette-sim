@@ -45,11 +45,11 @@ roulette = [
 baccarat_odds = [50.68, 49.32] # banker (viz excluded), player
 
 class Strategy: 
-    def __init__(self, bankroll=100, bet=2.5, session_aim=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
+    def __init__(self, bankroll=100, bet=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
         self.bankroll = bankroll
         self.bet_unit = bet
         self.curr_bet = bet
-        self.session_aim = session_aim if session_aim else float('inf')
+        self.profit_goal = profit_goal if profit_goal else float('inf')
         self.min_rounds = min_rounds
         self.max_rounds = max_rounds
         
@@ -66,7 +66,7 @@ class Strategy:
         self.pointer = 0 # johnson progression
 
     def execute(self, strategy='always_red'):
-        while 0 < self.bankroll < self.session_aim or self.round <= self.min_rounds:
+        while 0 < self.bankroll < self.profit_goal or self.round <= self.min_rounds:
             if self.max_rounds and self.round > self.max_rounds:
                 break
             elif strategy.startswith('irfans') and 2 * self.curr_bet > self.bankroll:
@@ -113,8 +113,16 @@ class Strategy:
             self.reset_bet()
         else:
             self.curr_bet *= 2
-    
-    # TODO: triple martingale
+
+    # add 1 unit after doubling bets on loss 
+    def grand_martingale(self, roll):
+        win = roll['color'] == 'Red'
+        self.update_bankroll(win)
+        if win:
+            self.reset_bet()
+        else:
+            self.curr_bet *= 2
+            self.curr_bet += self.bet_unit
 
     # increase and decrease bets by 1 unit on win and loss respectively
     def dalembert(self, roll):
@@ -231,7 +239,7 @@ class Strategy:
         win = roll['color'] == 'Red'
         if self.round == 1: 
             progression_len = 20 if not self.min_rounds else self.min_rounds
-            unit = math.ceil((self.session_aim - self.bankroll) / self.bet_unit)
+            unit = math.ceil((self.profit_goal - self.bankroll) / self.bet_unit)
             self.progression = [unit * i for i in range(progression_len)]
 
         bet_units = get_round_units(self)
@@ -263,7 +271,6 @@ class Strategy:
         same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
         win = not same_last_dozen and pocket_not_0(roll)
         self.update_bankroll(win, dozens=True)
-        self.last_roll = roll['pocket']
 
     # Martingale + 2/3 dozens
     def irfans_with_martingale(self, roll):
@@ -274,8 +281,7 @@ class Strategy:
             self.reset_bet()
         else:
             self.curr_bet *= 2
-        self.last_roll = roll['pocket']
-    
+
     # Dalembert + 2/3 dozens
     def irfans_with_dalembert(self, roll):
         same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
@@ -285,7 +291,6 @@ class Strategy:
             self.curr_bet += self.bet_unit 
         elif self.curr_bet > self.bet_unit:
             self.curr_bet -= self.bet_unit
-        self.last_roll = roll['pocket']
 
     # Paroli + 2/3 dozens
     def irfans_with_paroli(self, roll):
@@ -300,7 +305,6 @@ class Strategy:
         else:
             self.curr_bet = self.bet_unit
             self.streak = 0
-        self.last_roll = roll['pocket']
 
     # ==============================
     # ------ MISC STRATEGIES -------
@@ -365,6 +369,7 @@ class Strategy:
     strategies = {
         'always_red': always_red, 
         'martingale': martingale, 
+        'grand_martingale': grand_martingale,
         'paroli': paroli, 
         'dalembert': dalembert,
         'fibonacci': fibonacci,
@@ -397,7 +402,7 @@ def last_roll(self):
     return self.history['rolls'][-1][0] if self.history['rolls'] else 1
 
 def find_progression_len(self):
-    units_to_make = math.ceil((self.session_aim - self.bankroll) / self.bet_unit)
+    units_to_make = math.ceil((self.profit_goal - self.bankroll) / self.bet_unit)
     i = 3 # min progression len
     while True: 
         total = 0
