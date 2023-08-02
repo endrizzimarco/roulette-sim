@@ -2,8 +2,8 @@ from InquirerPy import prompt
 from InquirerPy.enum import INQUIRERPY_POINTER_SEQUENCE
 from InquirerPy.validator import EmptyInputValidator
 from strategies import Strategy
-from prettytable import PrettyTable
 
+# TODO: support baccarat and blackjack odds
 questions = [
     {
         "message": "Bankroll amount?",
@@ -25,7 +25,7 @@ questions = [
     },
     {
         "message": "Select the betting strategy:",
-        "type": "rawlist",
+        "type": "list",
         "choices": ["all"] + list(Strategy().strategies.keys()),
         "pointer": INQUIRERPY_POINTER_SEQUENCE,
     },
@@ -43,21 +43,16 @@ def simulate(result, strat):
   simulations = 2**14 # 16384
   reached_session_aim = 0
   for _ in range(simulations):
-    strategy = Strategy(bankroll=int(result[0]), bet=float(result[1]), session_aim=int(result[2]))
+    strategy = Strategy(bankroll=float(result[0]), bet=float(result[1]), profit_goal=float(result[2]))
     results = strategy.execute(strat)
-    if max(results) >= strategy.session_aim: 
+    if max(results["bankroll"]) >= strategy.profit_goal: 
       reached_session_aim += 1
   return(reached_session_aim/simulations * 100)
 
 
 if result[3] == "all":
-  cols = Strategy().strategies.keys()
-  row = []
-  table = PrettyTable(cols)
-  for strat in cols:
-    row.append(simulate(result, strat))
-  table.add_row(row)
-  print(table)
+  for strat in Strategy().strategies.keys():
+    print(f'{strat}: {simulate(result, strat)}%')
 else: 
   chance = simulate(result, result[3])
   print(f"Win probability for a session: {chance}%")
