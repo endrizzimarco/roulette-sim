@@ -42,7 +42,7 @@ roulette = [
     (36, 'Red'),
 ]
 
-baccarat_odds = [50.68, 49.32] # banker (viz excluded), player
+baccarat_odds = [49.32, 50.68] # player, banker (no, viz),
 
 class Strategy: 
     def __init__(self, bankroll=100, bet=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
@@ -61,9 +61,10 @@ class Strategy:
         self.baccarat = baccarat
 
         # strategy specific
-        self.streak = 0 # martingale + paroli + hollandish
+        self.streak = 0 # martingale + paroli + hollandish + a lot of others
         self.progression = [] # johnson progression
-        self.pointer = 0 # johnson progression
+        self.pointer = 0 # johnson progression + manhattan 
+        self.level = 0 # guetting progression
 
     def execute(self, strategy='always_red'):
         while 0 < self.bankroll < self.profit_goal or self.round <= self.min_rounds:
@@ -90,13 +91,18 @@ class Strategy:
 
     def update_bankroll(self, win, dozens=False):
         if win:
-            self.bankroll += self.curr_bet if not self.baccarat else self.curr_bet * 0.95
+            self.bankroll += self.curr_bet
         else:
             self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
 
     def reset_bet(self):
         self.curr_bet = self.bet_unit
         self.streak = 0
+
+    def reset_if_insufficent_funds(self):
+        if self.curr_bet > self.bankroll:
+            self.curr_bet = self.bankroll
+            self.streak, self.level, self.pointer = 0, 0, 0
 
     # ======================================
     # ------ EVEN CHANCES STRATEGIES -------
@@ -166,14 +172,13 @@ class Strategy:
             self.streak += 1
             if self.streak < len(progression):
                 self.curr_bet = progression[self.streak] * self.bet_unit
-                if self.curr_bet > self.bankroll:
-                    self.reset_bet()
+                self.reset_if_insufficent_funds()
             else: 
                 self.streak = 0
         else: 
             self.reset_bet()
 
-    # the classic 1-3-2-6 baccarat progression
+    # the classic 1-3-2-6 baccarat and roulette progression
     def one_three_two_six(self, roll):
         progression = [1, 3, 2, 6]
         self.progression_strat(roll, progression)
@@ -200,6 +205,36 @@ class Strategy:
             self.pointer = 0 
             self.streak = 0
         self.curr_bet = progression[self.pointer] * self.bet_unit + self.streak
+
+    # https://www.roulette17.com/systems/guetting/
+    def guetting_strat(self, roll, levels):
+        win = roll['color'] == 'Red'
+        self.update_bankroll(win)
+        if win: 
+            if self.streak == 0: 
+                self.streak += 1  # repeat last bet
+            else: 
+                move_next_lvl_or_stage(self, levels)
+                self.curr_bet = levels[self.level][self.pointer] * self.bet_unit
+                self.reset_if_insufficent_funds()
+        else: 
+            if self.streak == 0: 
+                self.level -= 1 if self.level > 0 else 0 # go down a level
+                self.pointer = 0
+                self.curr_bet = levels[self.level][self.pointer] * self.bet_unit
+                self.reset_if_insufficent_funds()
+            else: 
+                self.streak = 0 # repeat last bet   
+
+    # classic guetting progression 
+    def classic_guetting(self, roll):
+        levels = [[1], [1.5, 2, 3], [4, 6, 8], [10, 15, 20]]
+        self.guetting_strat(roll, levels)
+
+    # custom guetting progresison optimised for doubling your money according to progressions_sim.py
+    def optimal_guetting(self, roll):
+        levels = [[1], [10, 4, 1], [2, 1, 8], [2, 3, 6], [4, 7, 4]]
+        self.guetting_strat(roll, levels)
 
     # A simpler version of this: https://www.888casino.com/blog/tier-et-tout
     # TODO: come back to this
@@ -398,6 +433,8 @@ class Strategy:
         'one_three_two_six': one_three_two_six,
         'one_four_eight': one_four_eight,
         'manhattan': manhattan,
+        'classic_guetting': classic_guetting,
+        'optimal_guetting': optimal_guetting,
         'irfans': irfans, 
         'irfans_with_martingale': irfans_with_martingale, 
         'irfans_with_paroli': irfans_with_paroli,
@@ -423,6 +460,15 @@ def pocket_not_0(roll):
 
 def last_roll(self):
     return self.history['rolls'][-1][0] if self.history['rolls'] else 1
+
+def move_next_lvl_or_stage(self, levels):
+    self.streak = 0
+    if self.level == 0: # move up within level
+        self.level += 1
+    elif self.pointer < 2: # move up within stage
+        self.pointer += 1
+    elif self.level < len(levels)-1: # move up within level
+        self.level += 1
 
 def find_progression_len(self):
     units_to_make = math.ceil((self.profit_goal - self.bankroll) / self.bet_unit)
