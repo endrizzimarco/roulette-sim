@@ -96,6 +96,7 @@ class Strategy:
 
     def reset_bet(self):
         self.curr_bet = self.bet_unit
+        self.streak = 0
 
     # ======================================
     # ------ EVEN CHANCES STRATEGIES -------
@@ -145,8 +146,6 @@ class Strategy:
         else:
             self.curr_bet = self.bet_unit
             self.streak = 0
-    
-    # parlay TODO:
 
     # when you lose you move up the sequence, when you win you move down the sequence x2
     def fibonacci(self, roll):
@@ -167,11 +166,12 @@ class Strategy:
             self.streak += 1
             if self.streak < len(progression):
                 self.curr_bet = progression[self.streak] * self.bet_unit
+                if self.curr_bet > self.bankroll:
+                    self.reset_bet()
             else: 
                 self.streak = 0
         else: 
             self.reset_bet()
-            self.streak = 0 
 
     # the classic 1-3-2-6 baccarat progression
     def one_three_two_six(self, roll):
@@ -215,7 +215,6 @@ class Strategy:
         else:
             self.bankroll -= self.curr_bet
             self.curr_bet = self.bet_unit * 6
-
 
     # standard labouchere progression with lenght based on profit goal 
     def labouchere(self, roll):
@@ -303,8 +302,7 @@ class Strategy:
             if self.streak == 3:
                 self.reset_bet()
         else:
-            self.curr_bet = self.bet_unit
-            self.streak = 0
+            self.reset_bet()
 
     # ==============================
     # ------ MISC STRATEGIES -------
@@ -352,7 +350,30 @@ class Strategy:
             self.bankroll += self.bet_unit * 12
         else: 
             self.bankroll -= self.bet_unit * 2
+    
+    # https://www.playojo.com/blog/roulette/best-roulette-strategy/
+    def sixsixsix(self, roll):
+        self.curr_bet = self.bet_unit * 66
+        pocket, color = (roll['pocket'], roll['color'])
+
+        splits = [0, 2, 8, 11, 10, 13, 17, 20, 26, 29, 28, 31]
+        singles = [4, 6, 15]
+        
+        if color == 'Red': 
+            self.bankroll += self.bet_unit * 36
+        else: 
+            self.bankroll -= self.bet_unit * 36
             
+        if pocket in splits:
+            self.bankroll += (4 * self.bet_unit) * 17 - self.bet_unit * 20
+        else: 
+            self.bankroll -= self.bet_unit * 24
+            
+        if pocket in singles: 
+            self.bankroll += (2 * self.bet_unit) * 35 - self.bet_unit * 4
+        else: 
+            self.bankroll -= self.bet_unit * 6
+        
 
     # https://www.888casino.com/blog/positional-roulette#how-to-play-positional-roulette
     def positional_roulette(self, roll):
@@ -365,6 +386,7 @@ class Strategy:
                 self.bankroll += self.bet_unit * (35 - len(winning_pockets)-1)
             else: 
                 self.bankroll -= self.bet_unit * len(winning_pockets)
+
 
     strategies = {
         'always_red': always_red, 
@@ -386,7 +408,8 @@ class Strategy:
         'johnson_progression': johnson_progression,
         'four_pillars': four_pillars,
         'hollandish': hollandish,
-        'positional_roulette': positional_roulette
+        'positional_roulette': positional_roulette,
+        'sixsixsix': sixsixsix
     }
 
 

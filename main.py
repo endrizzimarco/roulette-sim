@@ -5,14 +5,14 @@ from statistics import median
 import seaborn as sns
 import numpy as np
 
-sessions = 2**14 # 4096
-strat = "martingale"
+sessions = 2**12# 4096
+strat = "sixsixsix"
 bankroll = 50
-bet = 2.5
-session_aim = 100
+bet = 0.25
+profit_goal = 100
 min_rounds = 0
 max_rounds = 0
-baccarat = True
+baccarat = False
 
 def plot_bankroll_and_bet(data):
   sns.set_style("darkgrid")
@@ -24,12 +24,12 @@ def plot_bankroll_and_bet(data):
   plt.legend()
   plt.show()
 
-def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session_aim=session_aim, min_rounds=min_rounds, max_rounds=max_rounds, baccarat=baccarat):
-  reached_session_aim = 0
+def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, profit_goal=profit_goal, min_rounds=min_rounds, max_rounds=max_rounds, baccarat=baccarat):
+  reached_profit_goal = 0
   bankroll_histories = []
   bets_histories = []
   for _ in range(sessions):
-    strategy = Strategy(bankroll, bet, session_aim, min_rounds, max_rounds, baccarat=baccarat)
+    strategy = Strategy(bankroll, bet, profit_goal, min_rounds, max_rounds, baccarat=baccarat)
     results = strategy.execute(strat)
     bankroll_histories.append(results["bankroll"])
     bets_histories.append(results["bets"])
@@ -38,15 +38,15 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
   total_rounds = [len(session) for session in bankroll_histories]
   average_rounds = sum(total_rounds) / len(total_rounds)
   median_rounds = median(total_rounds)
-  winning_rounds = [len(session) for session in bankroll_histories if session[-1] >= session_aim]
+  winning_rounds = [len(session) for session in bankroll_histories if session[-1] >= profit_goal]
   average_winning_rounds = sum(winning_rounds) / len(winning_rounds) if len(winning_rounds) > 0 else 0
-  losing_rounds = [len(session) for session in bankroll_histories if session[-1] < session_aim]
+  losing_rounds = [len(session) for session in bankroll_histories if session[-1] < profit_goal]
   average_losing_rounds = sum(losing_rounds) / len(losing_rounds) if len(losing_rounds) > 0 else 0
 
-  reached_session_aim = [session for session in bankroll_histories if session[-1] >= session_aim]
-  success_rate = len(reached_session_aim)/sessions * 100
-  reached_close_session_aim = [session for session in bankroll_histories if any(bankroll >= session_aim*0.75 for bankroll in session)]
-  close_success_rate = len(reached_close_session_aim)/sessions * 100
+  reached_profit_goal = [session for session in bankroll_histories if session[-1] >= profit_goal]
+  success_rate = len(reached_profit_goal)/sessions * 100
+  reached_close_profit_goal = [session for session in bankroll_histories if any(bankroll >= profit_goal*0.75 for bankroll in session)]
+  close_success_rate = len(reached_close_profit_goal)/sessions * 100
 
   average_bankroll_after_10_rounds = sum([session[10] if len(session) > 10 else 0 for session in bankroll_histories]) / len(bankroll_histories)
   average_final_bankroll = sum([session[-1] for session in bankroll_histories]) / len(bankroll_histories)
@@ -65,7 +65,7 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, session
   return {"bankroll": bankroll_histories, "bets": bets_histories, "success_rate": success_rate, "stats_table": stats_table}
 
 def print_stats_table(data):
-  print(f"\nstrat: {strat}, bankroll: £{bankroll}, bet: £{bet}, session aim: £{session_aim}")
+  print(f"\nstrat: {strat}, bankroll: £{bankroll}, bet: £{bet}, session aim: £{profit_goal}")
   print(data["stats_table"])
 
 def find_optimal_bet_size(strat):
@@ -96,9 +96,9 @@ def optimise(optimise_bet=False, win_chance=0, min_rounds=0, max_rounds=0):
     bets.append(bet if optimise_bet else bets)
 
   if win_chance and not chances: 
-    global session_aim
-    session_aim -= 0.1 * session_aim
-    print(f"changing session aim to: {session_aim}")
+    global profit_goal
+    profit_goal -= 0.1 * profit_goal
+    print(f"changing session aim to: {profit_goal}")
     optimise(optimise_bet, win_chance, max_rounds)
     
   if optimise_bet: 
