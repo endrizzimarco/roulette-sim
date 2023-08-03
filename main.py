@@ -3,12 +3,11 @@ import matplotlib.pyplot as plt
 from strategies import Strategy
 from statistics import median
 import seaborn as sns
-import numpy as np
 
 sessions = 2**12# 4096
-strat = "sixsixsix"
+strat = "optimal_guetting"
 bankroll = 50
-bet = 0.25
+bet = 2.5
 profit_goal = 100
 min_rounds = 0
 max_rounds = 0
@@ -40,7 +39,7 @@ def simulate(sessions=sessions, strat=strat, bankroll=bankroll, bet=bet, profit_
   median_rounds = median(total_rounds)
   winning_rounds = [len(session) for session in bankroll_histories if session[-1] >= profit_goal]
   average_winning_rounds = sum(winning_rounds) / len(winning_rounds) if len(winning_rounds) > 0 else 0
-  losing_rounds = [len(session) for session in bankroll_histories if session[-1] < profit_goal]
+  losing_rounds = [len(session) for session in bankroll_histories if session[-1] <= 0]
   average_losing_rounds = sum(losing_rounds) / len(losing_rounds) if len(losing_rounds) > 0 else 0
 
   reached_profit_goal = [session for session in bankroll_histories if session[-1] >= profit_goal]
@@ -69,7 +68,7 @@ def print_stats_table(data):
   print(data["stats_table"])
 
 def find_optimal_bet_size(strat):
-  bets_range = np.arange(1, bankroll/2, 0.5)
+  bets_range = [i * 0.5 for i in range(1, int(bankroll/2))]
   best_bet = 0
   best_chance = 0
   for bet in bets_range:
@@ -113,5 +112,5 @@ if __name__ == "__main__":
   data = simulate()
   print_stats_table(data)
   # plot_bankroll_and_bet(data)
-  # print(optimise(optimise_bet=False))
+  print(optimise(optimise_bet=False))
 
