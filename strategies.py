@@ -94,6 +94,10 @@ class Strategy:
             self.bankroll += self.curr_bet
         else:
             self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
+            
+    def insufficent_funds(self, units):
+        self.curr_bet = units
+        return self.curr_bet > self.bankroll
 
     def reset_bet(self):
         self.curr_bet = self.bet_unit
@@ -344,7 +348,7 @@ class Strategy:
     # ==============================
     # https://www.888casino.com/blog/kavouras-bet
     def kavouras(self, roll):
-        self.curr_bet = 8 * self.bet_unit
+        if self.insufficent_funds(8): return 
         pocket = roll['pocket']
 
         # corner
@@ -368,7 +372,7 @@ class Strategy:
 
     # https://www.888casino.com/blog/4-pillars-system-notes-madman
     def four_pillars(self, roll):
-        self.curr_bet = 6 * self.bet_unit
+        if self.insufficent_funds(6): return 
         pocket = roll['pocket']
 
         if pocket in range(4, 10) or pocket in range(25, 31):
@@ -388,7 +392,7 @@ class Strategy:
     
     # https://www.playojo.com/blog/roulette/best-roulette-strategy/
     def sixsixsix(self, roll):
-        self.curr_bet = self.bet_unit * 66
+        if self.insufficent_funds(66): return 
         pocket, color = (roll['pocket'], roll['color'])
 
         splits = [0, 2, 8, 11, 10, 13, 17, 20, 26, 29, 28, 31]
