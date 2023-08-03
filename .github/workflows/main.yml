@@ -9,7 +9,7 @@ jobs:
       - name: zip
         uses: montudor/action-zip@v0.1.0
         with:
-          args: zip -qq -r ./roulette-sin.zip ./
+          args: zip -r ./roulette-sim.zip .
       - name: default deploy
         uses: appleboy/lambda-action@master
         with:
