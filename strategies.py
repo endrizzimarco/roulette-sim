@@ -42,7 +42,7 @@ roulette = [
     (36, 'Red'),
 ]
 
-baccarat_odds = [49.32, 50.68] # player, banker (no, viz),
+baccarat_odds = [50.68, 49.32] # banker (no, viz), player
 
 class Strategy: 
     def __init__(self, bankroll=100, bet=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
@@ -52,9 +52,9 @@ class Strategy:
         self.profit_goal = profit_goal if profit_goal else float('inf')
         self.min_rounds = min_rounds
         self.max_rounds = max_rounds
-        
+
         # meta
-        self.history = {'bankroll': [], 'bets': [], 'rolls': []}
+        self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
         self.round = 1
         global roulette
         if american: roulette += [(-1, 'Green')]
@@ -81,19 +81,24 @@ class Strategy:
             else: 
                 roll = random.choice(roulette)
             self.strategies[strategy](self, {'pocket': roll[0], 'color': roll[1]})
+
             # update historical data
             self.history['bankroll'].append(self.bankroll)
             self.history['bets'].append(self.curr_bet)
             self.history['rolls'].append(roll)
+            self.history['progression'].append(self.progression.copy())
             self.round += 1
 
         return self.history
 
     def update_bankroll(self, win, dozens=False):
         if win:
-            self.bankroll += self.curr_bet
+            self.bankroll += self.curr_bet if not self.baccarat else 0.95 * self.curr_bet
+            self.history['wl'].append('win')
+
         else:
             self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
+            self.history['wl'].append('lose')
             
     def insufficent_funds(self, units):
         self.curr_bet = units
@@ -270,16 +275,18 @@ class Strategy:
             self.progression = self.progression[1:-1] # remove first and last elements
         else:
             self.progression.append(bet_units)
-            
-
     # https://www.roulettelife.com/index.php?topic=9.0
     def johnson_progression(self, roll):
-        win = roll['color'] == 'Red'
         if self.round == 1: 
-            progression_len = 20 if not self.min_rounds else self.min_rounds
-            unit = math.ceil((self.profit_goal - self.bankroll) / self.bet_unit)
-            self.progression = [unit * i for i in range(progression_len)]
+            progression_len = self.min_rounds or 20
+            total_units = (self.profit_goal - self.bankroll) / self.bet_unit
+            unit, remainder = divmod(total_units, progression_len)
+            self.progression = [unit] * progression_len
+            for i in range(int(remainder)):
+                self.progression[-i-1] += 1
+            self.history['progression'].append(self.progression.copy())
 
+        win = roll['color'] == 'Red'
         bet_units = get_round_units(self)
         self.curr_bet = bet_units * self.bet_unit
         self.update_bankroll(win)
@@ -342,6 +349,27 @@ class Strategy:
                 self.reset_bet()
         else:
             self.reset_bet()
+
+    def irfans_with_johnson(self, roll):
+        if self.round == 1: 
+            progression_len = self.min_rounds or 20
+            total_units = (self.profit_goal - self.bankroll) / self.bet_unit
+            unit, remainder = divmod(total_units, progression_len)
+            self.progression = [unit] * progression_len
+            for i in range(int(remainder)):
+                self.progression[-i-1] += 1
+            self.history['progression'].append(self.progression.copy())
+
+        same_last_dozen = get_dozen(roll['pocket']) == get_dozen(last_roll(self))
+        win = not same_last_dozen and pocket_not_0(roll)
+        bet_units = get_round_units(self)
+        self.curr_bet = bet_units * self.bet_unit
+        self.update_bankroll(win, dozens=True)
+
+        if win: 
+            self.progression = self.progression[1:-1] # remove first and last elements
+        else: 
+            distribute_losses(self, bet_units*2)
 
     # ==============================
     # ------ MISC STRATEGIES -------
@@ -443,6 +471,7 @@ class Strategy:
         'irfans_with_martingale': irfans_with_martingale, 
         'irfans_with_paroli': irfans_with_paroli,
         'irfans_with_dalembert': irfans_with_dalembert,
+        'irfans_with_johnson': irfans_with_johnson,
         'kavouras': kavouras,
         'tier_et_tout': tier_et_tout,
         'labouchere': labouchere,
@@ -477,7 +506,7 @@ def move_next_lvl_or_stage(self, levels):
 def find_progression_len(self):
     units_to_make = math.ceil((self.profit_goal - self.bankroll) / self.bet_unit)
     i = 3 # min progression len
-    while True: 
+    while True:  
         total = 0
         unit = math.ceil(units_to_make / i)
         for x in range(i):
@@ -498,11 +527,9 @@ def get_round_units(self):
     return bet_units
 
 def distribute_losses(self, to_distribute):
-    while to_distribute > 0: 
-        if self.pointer > len(self.progression) - 1:
-            self.pointer = 0
-        self.progression[self.pointer] += 1
-        self.pointer += 1
+    while to_distribute > 0:
+        min_index = self.progression.index(min(self.progression))
+        self.progression[min_index] += 1
         to_distribute -= 1
 
 def find_positional_numbers(self):

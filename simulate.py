@@ -2,17 +2,25 @@ from strategies import Strategy
 
 
 def simulate(params):
-  reached_profit_goal = 0
-  bankroll_histories = []
-  bets_histories = []
-  for _ in range(params["sessions"]):
-    results = Strategy(**params["data"]).execute(params["strat"])
-    bankroll_histories.append(results["bankroll"])
-    if results["bankroll"][-1] >= params["data"]["profit_goal"]: reached_profit_goal += 1
-    bets_histories.append(results["bets"])
-  success_rate = reached_profit_goal/params["sessions"] * 100
+  history = {
+    "bankrolls": [],
+    "bets": [], 
+    "success_rate": 0, 
+    "wl": [],
+    "progressions": []
+  }
   
-  return {"bankroll_histories": bankroll_histories, "bets_histories": bets_histories, "success_rate": success_rate}
+  for _ in range(params["sessions"]):
+    session = Strategy(**params["data"]).execute(params["strat"])
+    history["bankrolls"].append(session["bankroll"])
+    history["bets"].append(session["bets"])
+    history["wl"].append(session["wl"])
+    history["progressions"].append(session["progression"])
+
+  won_sessions = sum(session[-1] >= params["data"]["profit_goal"] for session in history["bankrolls"])
+  history["success_rate"] = won_sessions / params["sessions"] * 100
+
+  return history
 
 def find_optimal_bet_size(params):
   best_bet = 0

@@ -5,12 +5,13 @@ from statistics import median
 import seaborn as sns
 
 
+# TODO: add table limits
 params = {
-  "sessions": 2**10, # 16384
-  "strat": "sixsixsix",
+  "sessions": 2**14, # 16384
+  "strat": "irfans",
   "data": {
     "bankroll": 50,
-    "bet": 14,
+    "bet": 2.5,
     "profit_goal": 100,
     "min_rounds": 0,
     "max_rounds": 0,
@@ -28,44 +29,48 @@ def plot_bankroll_and_bet(data):
   plt.legend()
   plt.show()
 
-def print_stats_table(params, bankroll_histories):
-  # print(bankroll_histories[-1])
+def print_stats_table(params, history):
+  bankroll_histories = history["bankrolls"]
   profit_goal = params["data"]["profit_goal"]
   bankroll = params["data"]["bankroll"]
 
+  reached_profit_goal = [session for session in bankroll_histories if session[-1] >= profit_goal]
+  success_rate = len(reached_profit_goal)/params["sessions"] * 100
+  reached_close_profit_goal = [session for session in bankroll_histories if any(bankroll >= profit_goal*0.75 for bankroll in session)]
+  close_success_rate = len(reached_close_profit_goal)/params["sessions"] * 100
+  wl_for_session = [(wl.count("win")/len(wl)) * 100 for wl in history["wl"]]
+  average_wl_for_session = sum(wl_for_session) / len(wl_for_session)
+
   total_rounds = [len(session) for session in bankroll_histories]
-  average_rounds = sum(total_rounds) / len(total_rounds)
   median_rounds = median(total_rounds)
   winning_rounds = [len(session) for session in bankroll_histories if session[-1] >= profit_goal]
   average_winning_rounds = sum(winning_rounds) / len(winning_rounds) if len(winning_rounds) > 0 else 0
   losing_rounds = [len(session) for session in bankroll_histories if session[-1] <= 0]
   average_losing_rounds = sum(losing_rounds) / len(losing_rounds) if len(losing_rounds) > 0 else 0
 
-  reached_profit_goal = [session for session in bankroll_histories if session[-1] >= profit_goal]
-  success_rate = len(reached_profit_goal)/params["sessions"] * 100
-  reached_close_profit_goal = [session for session in bankroll_histories if any(bankroll >= profit_goal*0.75 for bankroll in session)]
-  close_success_rate = len(reached_close_profit_goal)/params["sessions"] * 100
-
   average_bankroll_after_10_rounds = sum([session[10] if len(session) > 10 else 0 for session in bankroll_histories]) / len(bankroll_histories)
   average_final_bankroll = sum([session[-1] for session in bankroll_histories]) / len(bankroll_histories)
 
-  stats_table = PrettyTable(["Session aim", "3/4 session aim", "Avg rounds", "Median rounds", "Avg W rounds", "Avg L rounds", "Avg @ 10 rounds", "House edge"])
+  stats_table = PrettyTable(["Session aim", "3/4 session aim", "Avg W/L for session", "Median rounds", "Avg W rounds", "Avg L rounds", "Avg @ 10 rounds", "House edge"])
   stats_table.add_row([f"{success_rate:.2f}%", 
                        f"{close_success_rate:.2f}%", 
-                       f"{average_rounds:.2f}", 
-                       median_rounds, 
+                       f"{average_wl_for_session:.2f}%",
+                       int(median_rounds), 
                        f"{average_winning_rounds:.2f}",
                        f"{average_losing_rounds:.2f}",
                        f"£{average_bankroll_after_10_rounds:.2f}", 
                        f"{(bankroll - average_final_bankroll)/bankroll * 100:.2f}%"])
 
   print(bankroll_histories[-1])
+  print(history["wl"][-1])
+  print("progression", history["progressions"][-1])
+  print("bets", history["bets"][-1])
   print(f"\nstrat: {params['strat']}, bankroll: £{bankroll}, bet: £{params['data']['bet']}, session aim: £{profit_goal}")
   print(stats_table)
 
 
 if __name__ == "__main__":
-  data = simulate(params)
-  print_stats_table(params, data["bankroll_histories"])
+  history = simulate(params)
+  print_stats_table(params, history)
   # plot_bankroll_and_bet(data)
   # print(optimise(params, optimise_bet=True)) # optimise(params, optimise_bet=False, win_chance=0)
