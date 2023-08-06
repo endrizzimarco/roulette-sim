@@ -5,18 +5,18 @@ from statistics import median
 import seaborn as sns
 
 
-# TODO: add table limits
 # TODO: possibility to choose between baccarat player and banker
 params = {
-  "sessions": 2**20, # 16384
+  "sessions": 2**16, # 16384
   "strat": "martingale",
   "data": {
+    "baccarat": False,
     "bankroll": 50,
     "bet_unit": 2.5,
     "profit_goal": 100,
     "min_rounds": 0,
     "max_rounds": 0,
-    "baccarat": False
+    "table_limits": 0,
   }
 }
 

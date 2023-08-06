@@ -72,7 +72,7 @@ class Irfans(BettingStrategy):
 
     @staticmethod
     def last_roll(self):
-        return self.history['rolls'][-1][0] if self.history['rolls'] else 1
+        return self.session.history['rolls'][-1][0] if self.session.history['rolls'] else 1
 
 # Bet double after every loss, reset after every win
 class Martingale(BettingStrategy):

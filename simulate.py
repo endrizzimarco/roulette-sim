@@ -1,5 +1,4 @@
 from strategies import *
-from multiprocessing import Pool
 import random
 
 
@@ -7,27 +6,26 @@ class Game:
     ROULETTE = [(0, 'Green'), (1, 'Red'), (2, 'Black'), (3, 'Red'), (4, 'Black'), (5, 'Red'),(6, 'Black'), (7, 'Red'), (8, 'Black'), (9, 'Red'), (10, 'Black'), (11, 'Black'), (12, 'Red'), (13, 'Black'), (14, 'Red'), (15, 'Black'), (16, 'Red'), (17, 'Black'), (18, 'Red'), (19, 'Red'), (20, 'Black'), (21, 'Red'), (22, 'Black'), (23, 'Red'), (24, 'Black'), (25, 'Red'), (26, 'Black'), (27, 'Red'), (28, 'Black'), (29, 'Black'), (30, 'Red'), (31, 'Black'), (32, 'Red'), (33, 'Black'), (34, 'Red'), (35, 'Black'), (36, 'Red'),]
     BACCARAT_ODDS = [50.68, 49.32] # [banker (no, viz), player]
 
-    def __init__(self, roulette=ROULETTE, baccarat_odds=BACCARAT_ODDS, baccarat=False, american=False):
-        self.roulette = roulette
+    def __init__(self, baccarat=False, american=False):
         self.baccarat = baccarat
-        self.baccarat_odds = baccarat_odds
         if american: 
-            self.roulette += [(-1, 'Green')]
+            self.ROULETTE += [(-1, 'Green')]
 
     def roll(self):
         if self.baccarat:
-            return (None, random.choices(['Red', 'Black'], weights=self.baccarat_odds)[0])
+            return (None, random.choices(['Red', 'Black'], weights=self.BACCARAT_ODDS)[0])
         else: 
-            return random.choice(self.roulette)
+            return random.choice(self.ROULETTE)
 
 
 class CasinoSession: 
-    def __init__(self, bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
+    def __init__(self, bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, table_limits=0, baccarat=False):
         self.bankroll = bankroll
         self.bet_unit = bet_unit
         self.curr_bet = bet_unit
         self.min_rounds = min_rounds
         self.max_rounds = max_rounds
+        self.table_limits = table_limits
         self.profit_goal = profit_goal if profit_goal else float('inf')
         # meta
         self.game = Game(baccarat=baccarat, american=american)
@@ -102,7 +100,7 @@ class CasinoSession:
         else:
             self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
             self.history['wl'].append('lose')
-            
+
     def insufficent_funds(self, units):
         self.curr_bet = units
         return self.curr_bet > self.bankroll
@@ -113,17 +111,13 @@ class CasinoSession:
     def check_and_handle_insufficient_funds(self):
         if self.bankroll <= 0: 
             return
+        elif self.table_limits and self.curr_bet > self.table_limits:
+            self.curr_bet = self.table_limits
         elif self.curr_bet > self.bankroll:
             self.curr_bet = self.bankroll
 
 
-def update_history(history, session):
-    history["bankrolls"].append(session["bankroll"])
-    history["bets"].append(session["bets"])
-    history["wl"].append(session["wl"])
-    history["progressions"].append(session["progression"])
-
-def simulate(params, parallelise=True):
+def simulate(params):
     history = {
         "bankrolls": [],
         "bets": [], 
@@ -132,17 +126,13 @@ def simulate(params, parallelise=True):
         "progressions": []
     }
 
-    if parallelise:
-        # Execute every session in parallel with multiprocessing
-        with Pool() as pool:
-            results = pool.map(CasinoSession(**params["data"]).execute, [params["strat"]] * params["sessions"])
-            for session in results:
-                update_history(history, session)
-    else: 
-        # Execute every session sequentially
-        for _ in range(params["sessions"]):
-                session = CasinoSession(**params["data"]).execute(params["strat"])
-                update_history(history, session)
+    # Execute every session sequentially
+    for _ in range(params["sessions"]):
+        session = CasinoSession(**params["data"]).execute(params["strat"])
+        history["bankrolls"].append(session["bankroll"])
+        history["bets"].append(session["bets"])
+        history["wl"].append(session["wl"])
+        history["progressions"].append(session["progression"])
 
     # Calculate success rate
     won_sessions = sum(session[-1] >= params["data"]["profit_goal"] for session in history["bankrolls"])

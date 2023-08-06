@@ -3,15 +3,16 @@ from simulate import simulate, optimise
 
 def lambda_handler(event, _context):
     params = {
-    "sessions": 2**18, # 262144
+    "sessions": 2**16, # 262144
     "strat": "optimal_guetting",
     "data": {
         "bankroll": 50,
-        "bet": 2.5,
+        "bet_unit": 2.5,
         "profit_goal": 100,
         "min_rounds": 0,
         "max_rounds": 0,
-        "baccarat": False
+        "baccarat": False,
+        "table_limits": 0
         },
     # optimise params
     "optimise_bet": False,
@@ -28,7 +29,7 @@ def lambda_handler(event, _context):
     if event.get("optimise"):
         results = optimise(params)
     else:
-        results = simulate(params, parallelise=False)["success_rate"]
+        results = simulate(params)["success_rate"]
 
 
     return {
