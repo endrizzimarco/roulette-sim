@@ -6,12 +6,13 @@ import seaborn as sns
 
 
 # TODO: add table limits
+# TODO: possibility to choose between baccarat player and banker
 params = {
-  "sessions": 2**14, # 16384
-  "strat": "irfans",
+  "sessions": 2**16, # 16384
+  "strat": "positional_roulette",
   "data": {
     "bankroll": 50,
-    "bet": 2.5,
+    "bet_unit": 2.5,
     "profit_goal": 100,
     "min_rounds": 0,
     "max_rounds": 0,
@@ -63,9 +64,9 @@ def print_stats_table(params, history):
 
   print(bankroll_histories[-1])
   print(history["wl"][-1])
-  print("progression", history["progressions"][-1])
+  # print("progression", history["progressions"][-1])
   print("bets", history["bets"][-1])
-  print(f"\nstrat: {params['strat']}, bankroll: £{bankroll}, bet: £{params['data']['bet']}, session aim: £{profit_goal}")
+  print(f"\nstrat: {params['strat']}, bankroll: £{bankroll}, bet: £{params['data']['bet_unit']}, session aim: £{profit_goal}")
   print(stats_table)
 
 

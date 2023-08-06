@@ -1,4 +1,4 @@
-from strategies import Strategy
+from strategies import CasinoSession
 
 
 def simulate(params):
@@ -11,7 +11,7 @@ def simulate(params):
   }
   
   for _ in range(params["sessions"]):
-    session = Strategy(**params["data"]).execute(params["strat"])
+    session = CasinoSession(**params["data"]).execute(params["strat"])
     history["bankrolls"].append(session["bankroll"])
     history["bets"].append(session["bets"])
     history["wl"].append(session["wl"])
@@ -27,7 +27,7 @@ def find_optimal_bet_size(params):
   best_chance = 0
   bankroll = params["data"]["bankroll"]
   for bet in range(int(bankroll/4), int(bankroll/2)): #FIXME: this is shit!
-    params["data"]["bet"] = bet
+    params["data"]["bet_unit"] = bet
     chance = simulate(params)["success_rate"]
     if chance > best_chance: 
       best_bet = bet 
