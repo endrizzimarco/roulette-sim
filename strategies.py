@@ -1,123 +1,5 @@
 from abc import ABC, abstractmethod
-import random
 import math
-
-
-# Constants
-ROULETTE = [(0, 'Green'), (1, 'Red'), (2, 'Black'), (3, 'Red'), (4, 'Black'), (5, 'Red'),(6, 'Black'), (7, 'Red'), (8, 'Black'), (9, 'Red'), (10, 'Black'), (11, 'Black'), (12, 'Red'), (13, 'Black'), (14, 'Red'), (15, 'Black'), (16, 'Red'), (17, 'Black'), (18, 'Red'), (19, 'Red'), (20, 'Black'), (21, 'Red'), (22, 'Black'), (23, 'Red'), (24, 'Black'), (25, 'Red'), (26, 'Black'), (27, 'Red'), (28, 'Black'), (29, 'Black'), (30, 'Red'), (31, 'Black'), (32, 'Red'), (33, 'Black'), (34, 'Red'), (35, 'Black'), (36, 'Red'),]
-BACCARAT_ODDS = [50.68, 49.32] # [banker (no, viz), player]
-
-
-# Set the odds based on the game played (for even odds strategies only)
-class Game:
-    def __init__(self, roulette=ROULETTE, baccarat_odds=BACCARAT_ODDS, baccarat=False, american=False):
-        self.roulette = roulette
-        self.baccarat = baccarat
-        self.baccarat_odds = baccarat_odds
-        if american: 
-            self.roulette += [(-1, 'Green')]
-
-    def roll(self):
-        if self.baccarat:
-            return (None, random.choices(['Red', 'Black'], weights=self.baccarat_odds)[0])
-        else: 
-            return random.choice(self.roulette)
-
-
-class CasinoSession: 
-    def __init__(self, bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
-        self.bankroll = bankroll
-        self.bet_unit = bet_unit
-        self.curr_bet = bet_unit
-        self.min_rounds = min_rounds
-        self.max_rounds = max_rounds
-        self.profit_goal = profit_goal if profit_goal else float('inf')
-        # meta
-        self.game = Game(baccarat=baccarat, american=american)
-        self.strategy = None
-        self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
-        self.round = 1
-
-        # strategy specific
-        self.progression = [] # johnson progression
-        self.pointer = 0 # johnson progression + manhattan 
-        self.level = 0 # guetting progression
-        
-        self.strategies = {
-            'always_red': AlwaysRed, 
-            'irfans': Irfans,
-            'martingale': Martingale,
-            'grand_martingale': GrandMartingale,
-            'dalembert': Dalembert,
-            'paroli': Paroli,
-            'fibonacci': Fibonacci,
-            'hollandish': Hollandish,
-            'tier_et_tout': TierEtTout,
-            '1326': OneThreeTwoSix,
-            '148': OneFourEight,
-            'manhattan': Manhattan,
-            'standard_guetting': StandardGuetting,
-            'optimal_guetting': OptimalGuetting,
-            'labouchere': Labouchere,
-            'johnson_progression': JohnsonProgression,
-            'kavouras': Kavouras,
-            'four_pillars': FourPillars,
-            'sixsixsix': SixSixSix,
-            'positional_roulette': PositionalRoulette,
-        }
-
-    def execute(self, strategy='always_red'):
-        if not self.strategy: 
-            self.strategy = self.strategies[strategy](self)
-
-        while self.should_continue(self.strategy):
-            roll = self.game.roll()
-            self.strategy.execute({"pocket": roll[0], "color": roll[1]})
-            self.update_history(roll)
-            self.round += 1
-        return self.history
-
-    def should_continue(self, strategy):
-        # Check if the bankroll is greater than zero and less than the profit goal.
-        bankroll_within_limits = 0 < self.bankroll < self.profit_goal
-        # Check if the minimum number of rounds is specified and if the current round exceeds it.
-        min_rounds_not_reached = self.min_rounds and self.round <= self.min_rounds
-        # Check if the maximum number of rounds is specified and if the current round exceeds it.
-        max_rounds_reached = self.max_rounds and self.round > self.max_rounds
-        # Check whether the current bet is more than the available bankroll (money does not grow on trees).
-        bet_exceeds_bankroll = 2 * self.curr_bet > self.bankroll if strategy.use_dozens else self.curr_bet > self.bankroll
-
-        # As long as the bankroll is within limits or the minimum number of rounds is not reached, continue betting 
-        # (unless the maximum number of rounds is reached or the bet exceeds the bankroll)
-        continue_betting = (bankroll_within_limits or min_rounds_not_reached) and not (max_rounds_reached or bet_exceeds_bankroll)
-
-        return continue_betting
-
-    def update_history(self, roll):
-        self.history['bankroll'].append(self.bankroll)
-        self.history['bets'].append(self.curr_bet)
-        self.history['rolls'].append(roll)
-
-    def update_bankroll(self, win, dozens=False):
-        if win:
-            self.bankroll += self.curr_bet if not self.game.baccarat else 0.95 * self.curr_bet
-            self.history['wl'].append('win')
-        else:
-            self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
-            self.history['wl'].append('lose')
-            
-    def insufficent_funds(self, units):
-        self.curr_bet = units
-        return self.curr_bet > self.bankroll
-
-    def reset_bet(self):
-        self.curr_bet = self.bet_unit
-
-    def check_and_handle_insufficient_funds(self):
-        if self.bankroll <= 0: 
-            return
-        elif self.curr_bet > self.bankroll:
-            self.curr_bet = self.bankroll
 
 
 class BettingStrategy(ABC):
@@ -149,7 +31,7 @@ class BettingStrategy(ABC):
         pass
 
     def cleanup(self):
-        self.session.check_and_handle_insufficient_funds()
+        pass
 
     def execute(self, roll):
         self.setup()
@@ -161,10 +43,13 @@ class BettingStrategy(ABC):
             self.on_win()
         else: 
             self.on_loss()
-        
+
         self.cleanup()
+        self.session.check_and_handle_insufficient_funds()
 
-
+# ====================================
+# --- EVEN ODDS/DOZENS STRATEGIES ----
+# ====================================
 # Bet on red every time
 class AlwaysRed(BettingStrategy):
     pass
@@ -261,13 +146,13 @@ class TierEtTout(BettingStrategy):
     def __init__(self, session_instance): 
         super().__init__(session_instance)
         self.session.curr_bet = self.session.bet_unit * 3
-        
+
     def setup(self): 
          self.session.bet_unit = math.ceil(1/9 * self.session.bankroll)
 
     def on_win(self):
         self.session.curr_bet = self.session.bet_unit * 3
-        
+
     def on_loss(self):
         self.session.curr_bet = self.session.bet_unit * 6
 
@@ -329,7 +214,6 @@ class Manhattan(ProgressionStrategy):
 
     def cleanup(self):
         self.session.curr_bet = (self.progression[self.pointer] + self.streak) * self.session.bet_unit
-        self.session.check_and_handle_insufficient_funds()
 
 # https://www.roulette17.com/systems/guetting/
 class GuettingProgressionStrategy(ProgressionStrategy):
@@ -368,7 +252,6 @@ class GuettingProgressionStrategy(ProgressionStrategy):
 
     def cleanup(self):
         self.session.curr_bet = self.progression[self.level][self.pointer] * self.session.bet_unit
-        super().cleanup()
 
 # The standard guetting progression 
 class StandardGuetting(GuettingProgressionStrategy):
@@ -455,9 +338,9 @@ class JohnsonProgression(Labouchere):
         else: 
             self.distribute_losses(self.round_units*2)
 
-    # ==============================
-    # ------ MISC STRATEGIES -------
-    # ==============================
+# =================================
+# --- ROULETTE ONLY STRATEGIES ----
+# =================================
 class RouletteStrategy(ABC):
     def __init__(self, session_instance):
         self.session = session_instance
@@ -533,7 +416,7 @@ class SixSixSix(RouletteStrategy):
         pocket, color = (roll['pocket'], roll['color'])
         splits = [0, 2, 8, 11, 10, 13, 17, 20, 26, 29, 28, 31]
         singles = [4, 6, 15]
-        
+
         if color == 'Red': 
             self.units_gained(36)
         else: 
@@ -570,7 +453,7 @@ class PositionalRoulette(RouletteStrategy):
 
         def get_prev_pocket_index(index):
             return (index - 1) % len(self.roulette)
-        
+
         cycle_count = 0
         i = get_next_pocket_index(prev_pocket)
         while len(selected_pockets) < 8:

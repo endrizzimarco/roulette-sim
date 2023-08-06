@@ -8,8 +8,8 @@ import seaborn as sns
 # TODO: add table limits
 # TODO: possibility to choose between baccarat player and banker
 params = {
-  "sessions": 2**16, # 16384
-  "strat": "positional_roulette",
+  "sessions": 2**20, # 16384
+  "strat": "martingale",
   "data": {
     "bankroll": 50,
     "bet_unit": 2.5,
@@ -74,4 +74,4 @@ if __name__ == "__main__":
   history = simulate(params)
   print_stats_table(params, history)
   # plot_bankroll_and_bet(data)
-  # print(optimise(params, optimise_bet=True)) # optimise(params, optimise_bet=False, win_chance=0)
+  # print(optimise(params, optimise_bet=False)) # optimise(params, optimise_bet=False, win_chance=0)

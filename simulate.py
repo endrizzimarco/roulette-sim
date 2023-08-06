@@ -1,4 +1,120 @@
-from strategies import CasinoSession
+from strategies import *
+from multiprocessing import Pool
+import random
+
+
+class Game:
+    ROULETTE = [(0, 'Green'), (1, 'Red'), (2, 'Black'), (3, 'Red'), (4, 'Black'), (5, 'Red'),(6, 'Black'), (7, 'Red'), (8, 'Black'), (9, 'Red'), (10, 'Black'), (11, 'Black'), (12, 'Red'), (13, 'Black'), (14, 'Red'), (15, 'Black'), (16, 'Red'), (17, 'Black'), (18, 'Red'), (19, 'Red'), (20, 'Black'), (21, 'Red'), (22, 'Black'), (23, 'Red'), (24, 'Black'), (25, 'Red'), (26, 'Black'), (27, 'Red'), (28, 'Black'), (29, 'Black'), (30, 'Red'), (31, 'Black'), (32, 'Red'), (33, 'Black'), (34, 'Red'), (35, 'Black'), (36, 'Red'),]
+    BACCARAT_ODDS = [50.68, 49.32] # [banker (no, viz), player]
+
+    def __init__(self, roulette=ROULETTE, baccarat_odds=BACCARAT_ODDS, baccarat=False, american=False):
+        self.roulette = roulette
+        self.baccarat = baccarat
+        self.baccarat_odds = baccarat_odds
+        if american: 
+            self.roulette += [(-1, 'Green')]
+
+    def roll(self):
+        if self.baccarat:
+            return (None, random.choices(['Red', 'Black'], weights=self.baccarat_odds)[0])
+        else: 
+            return random.choice(self.roulette)
+
+
+class CasinoSession: 
+    def __init__(self, bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, baccarat=False):
+        self.bankroll = bankroll
+        self.bet_unit = bet_unit
+        self.curr_bet = bet_unit
+        self.min_rounds = min_rounds
+        self.max_rounds = max_rounds
+        self.profit_goal = profit_goal if profit_goal else float('inf')
+        # meta
+        self.game = Game(baccarat=baccarat, american=american)
+        self.strategy = None
+        self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
+        self.round = 1
+
+        # strategy specific
+        self.progression = [] # johnson progression
+        self.pointer = 0 # johnson progression + manhattan 
+        self.level = 0 # guetting progression
+        
+        self.strategies = {
+            'always_red': AlwaysRed, 
+            'irfans': Irfans,
+            'martingale': Martingale,
+            'grand_martingale': GrandMartingale,
+            'dalembert': Dalembert,
+            'paroli': Paroli,
+            'fibonacci': Fibonacci,
+            'hollandish': Hollandish,
+            'tier_et_tout': TierEtTout,
+            '1326': OneThreeTwoSix,
+            '148': OneFourEight,
+            'manhattan': Manhattan,
+            'standard_guetting': StandardGuetting,
+            'optimal_guetting': OptimalGuetting,
+            'labouchere': Labouchere,
+            'johnson_progression': JohnsonProgression,
+            'kavouras': Kavouras,
+            'four_pillars': FourPillars,
+            'sixsixsix': SixSixSix,
+            'positional_roulette': PositionalRoulette,
+        }
+
+    def execute(self, strategy='always_red'):
+        if not self.strategy: 
+            self.strategy = self.strategies[strategy](self)
+
+        while self.should_continue(self.strategy):
+            roll = self.game.roll()
+            self.strategy.execute({"pocket": roll[0], "color": roll[1]})
+            self.update_history(roll)
+            self.round += 1
+        return self.history
+
+    def should_continue(self, strategy):
+        # Check if the bankroll is greater than zero and less than the profit goal.
+        bankroll_within_limits = 0 < self.bankroll < self.profit_goal
+        # Check if the minimum number of rounds is specified and if the current round exceeds it.
+        min_rounds_not_reached = self.min_rounds and self.round <= self.min_rounds
+        # Check if the maximum number of rounds is specified and if the current round exceeds it.
+        max_rounds_reached = self.max_rounds and self.round > self.max_rounds
+        # Check whether the current bet is more than the available bankroll (money does not grow on trees).
+        bet_exceeds_bankroll = 2 * self.curr_bet > self.bankroll if strategy.use_dozens else self.curr_bet > self.bankroll
+
+        # As long as the bankroll is within limits or the minimum number of rounds is not reached, continue betting 
+        # (unless the maximum number of rounds is reached or the bet exceeds the bankroll)
+        continue_betting = (bankroll_within_limits or min_rounds_not_reached) and not (max_rounds_reached or bet_exceeds_bankroll)
+
+        return continue_betting
+
+    def update_history(self, roll):
+        self.history['bankroll'].append(self.bankroll)
+        self.history['bets'].append(self.curr_bet)
+        self.history['rolls'].append(roll)
+
+    def update_bankroll(self, win, dozens=False):
+        if win:
+            self.bankroll += self.curr_bet if not self.game.baccarat else 0.95 * self.curr_bet
+            self.history['wl'].append('win')
+        else:
+            self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
+            self.history['wl'].append('lose')
+            
+    def insufficent_funds(self, units):
+        self.curr_bet = units
+        return self.curr_bet > self.bankroll
+
+    def reset_bet(self):
+        self.curr_bet = self.bet_unit
+
+    def check_and_handle_insufficient_funds(self):
+        if self.bankroll <= 0: 
+            return
+        elif self.curr_bet > self.bankroll:
+            self.curr_bet = self.bankroll
 
 
 def simulate(params):
@@ -9,9 +125,11 @@ def simulate(params):
     "wl": [],
     "progressions": []
   }
-  
-  for _ in range(params["sessions"]):
-    session = CasinoSession(**params["data"]).execute(params["strat"])
+
+  with Pool() as pool:
+    results = pool.map(CasinoSession(**params["data"]).execute, [params["strat"]] * params["sessions"])
+
+  for session in results:
     history["bankrolls"].append(session["bankroll"])
     history["bets"].append(session["bets"])
     history["wl"].append(session["wl"])
@@ -35,12 +153,13 @@ def find_optimal_bet_size(params):
       # print(f"({strat}) New best bet: {best_bet}, with chance {chance}%")
   return (best_bet, best_chance)
 
+
 def optimise(params, optimise_bet=False, win_chance=0):
   strategies = []
   chances = []
   bets = []
 
-  for strategy in Strategy().strategies.keys():
+  for strategy in CasinoSession().strategies.keys():
     params["strat"] = strategy
     chance = simulate(params)["success_rate"]
     if optimise_bet: 
