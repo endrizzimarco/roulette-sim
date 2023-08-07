@@ -33,11 +33,6 @@ class CasinoSession:
         self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
         self.round = 1
 
-        # strategy specific
-        self.progression = [] # johnson progression
-        self.pointer = 0 # johnson progression + manhattan 
-        self.level = 0 # guetting progression
-        
         self.strategies = {
             'always_red': AlwaysRed, 
             'irfans': Irfans,
@@ -46,7 +41,7 @@ class CasinoSession:
             'dalembert': Dalembert,
             'paroli': Paroli,
             'fibonacci': Fibonacci,
-            'hollandish': Hollandish,
+            'hollandish': StandardHollandish,
             'tier_et_tout': TierEtTout,
             '1326': OneThreeTwoSix,
             '148': OneFourEight,
@@ -109,9 +104,7 @@ class CasinoSession:
         self.curr_bet = self.bet_unit
 
     def check_and_handle_insufficient_funds(self):
-        if self.bankroll <= 0: 
-            return
-        elif self.table_limits and self.curr_bet > self.table_limits:
+        if self.table_limits and self.curr_bet > self.table_limits:
             self.curr_bet = self.table_limits
         elif self.curr_bet > self.bankroll:
             self.curr_bet = self.bankroll
@@ -167,7 +160,7 @@ def optimise(params, optimise_bet=False, win_chance=0):
         if win_chance and chance <= win_chance:
             continue
         strategies.append(strategy)
-        chances.append(chance)
+        chances.append(f"{chance:.4f}%")
         if optimise_bet: bets.append(bet)
 
     if win_chance and not chances: 
@@ -180,4 +173,4 @@ def optimise(params, optimise_bet=False, win_chance=0):
     else:
         result = sorted(zip(strategies, chances), key=lambda x: x[1], reverse=True)
         
-    return result[:5] if not win_chance else (params["data"]["profit_goal"], result[:5])
+    return result[:10] if not win_chance else (params["data"]["profit_goal"], result[:5])

@@ -71,8 +71,8 @@ class Irfans(BettingStrategy):
         return roll['pocket'] != 0 and roll['pocket'] != -1
 
     @staticmethod
-    def last_roll(self):
-        return self.session.history['rolls'][-1][0] if self.session.history['rolls'] else 1
+    def last_roll(session):
+        return session.history['rolls'][-1][0] if session.history['rolls'] else 1
 
 # Bet double after every loss, reset after every win
 class Martingale(BettingStrategy):
@@ -125,21 +125,6 @@ class Paroli(BettingStrategy):
     def on_loss(self):
         self.reset_streak()
 
-#FIXME: this strategy is completely wrong
-# https://www.roulette17.com/systems/hollandish/
-class Hollandish(BettingStrategy):
-    def __init__(self, session_instance):
-        super().__init__(session_instance)
-        self.streak = 0
-
-    def on_win(self):
-        self.streak -= 1 if self.streak else 0
-        if self.streak == 0: 
-            self.session.curr_bet += 2 * self.session.bet_unit
-
-    def on_loss(self):
-        self.streak += 1
-
 # FIXME: I AM PROBABLY WRONG
 # A simpler version of this: https://www.888casino.com/blog/tier-et-tout
 class TierEtTout(BettingStrategy):
@@ -172,7 +157,36 @@ class ProgressionStrategy(BettingStrategy):
 
     def cleanup(self):
         self.session.curr_bet = self.progression[self.streak] * self.session.bet_unit
-        super().cleanup()
+
+# https://www.roulette17.com/systems/hollandish/
+class Hollandish(BettingStrategy):
+    def __init__(self, session_instance, prog_ex):
+        super().__init__(session_instance)
+        self.prog_ex = prog_ex
+        self.mini_session_wins = 0
+
+    def is_mini_session_over(self):
+        return self.session.round % 3 == 0
+
+    def on_win(self):
+        self.mini_session_wins += 1
+
+    def cleanup(self):
+        if not self.is_mini_session_over(): return 
+
+        if self.mini_session_wins >= 2:
+            self.session.reset_bet() # reset mini session
+        else: 
+            self.prog_ex(self.session)
+
+        self.mini_session_wins, self.mini_session_counter = (0, 0)
+
+# The classic hollandish progression [1, 3, 5, 6, 7, 9] (+2)
+class StandardHollandish(Hollandish): 
+    def __init__(self, session_instance):
+        def progression_exp(session):
+                session.curr_bet += self.session.bet_unit * 2
+        super().__init__(session_instance, progression_exp)
 
 # The classic 1-3-2-6 baccarat and roulette progression
 class OneThreeTwoSix(ProgressionStrategy):
@@ -313,7 +327,6 @@ class Labouchere(BettingStrategy):
 
     def cleanup(self):
         self.handle_round()
-        super().cleanup()
 
 # https://www.roulettelife.com/index.php?topic=9.0
 class JohnsonProgression(Labouchere):
@@ -399,7 +412,7 @@ class FourPillars(RouletteStrategy):
             self.units_gained(3)
         else: 
             self.units_lost(2)
-            
+
         if roll['pocket'] in [14, 15, 17, 18]:
             self.units_gained(12)
         else: 
@@ -437,7 +450,7 @@ class PositionalRoulette(RouletteStrategy):
     def __init__(self, session_instance):
         super().__init__(session_instance)
         self.session.curr_bet = self.session.bet_unit * 8
-        self.roulette = self.session.game.roulette
+        self.roulette = self.session.game.ROULETTE
 
     def find_positional_numbers(self):
         all_n = set(range(1, 37))
