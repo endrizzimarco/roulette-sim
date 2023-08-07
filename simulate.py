@@ -51,6 +51,7 @@ class CasinoSession:
             'standard_guetting': StandardGuetting,
             'optimal_guetting': OptimalGuetting,
             'labouchere': Labouchere,
+            'reverse_labouchere': ReverseLabouchere,
             'johnson_progression': JohnsonProgression,
             'kavouras': Kavouras,
             'four_pillars': FourPillars,

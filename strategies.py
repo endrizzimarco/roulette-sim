@@ -364,6 +364,16 @@ class Labouchere(BettingStrategy):
     def cleanup(self):
         self.handle_round()
 
+class ReverseLabouchere(Labouchere):
+    def __init__(self, session_instance):
+        super().__init__(session_instance)
+    
+    def on_win(self):
+        super().on_loss()
+    
+    def on_loss(self):
+        super().on_win()
+
 # https://www.roulettelife.com/index.php?topic=9.0
 class JohnsonProgression(Labouchere):
     def __init__(self, session_instance):
