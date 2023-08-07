@@ -94,6 +94,22 @@ class GrandMartingale(Martingale):
         super().on_loss()
         self.session.curr_bet += self.session.bet_unit
 
+# Martingale but only doubling on three consecutive losses
+class Piquemouche(Martingale):
+    def __init__(self, session_instance):
+        super().__init__(session_instance)
+        self.loss_streak = 0
+    
+    def on_win(self):
+        super().on_win()
+        self.loss_streak = 0
+
+    def on_loss(self):
+        self.loss_streak += 1
+        if self.loss_streak == 3: 
+            self.session.curr_bet *= 2
+            self.loss_streak = 0
+
 # Increase bet by 1 unit after a win and decrease by 1 unit after a loss
 class Dalembert(BettingStrategy):
     def __init__(self, session_instance):

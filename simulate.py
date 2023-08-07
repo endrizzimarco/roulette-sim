@@ -38,6 +38,7 @@ class CasinoSession:
             'irfans': Irfans,
             'martingale': Martingale,
             'grand_martingale': GrandMartingale,
+            'piquemouche': Piquemouche,
             'dalembert': Dalembert,
             'paroli': Paroli,
             'fibonacci': Fibonacci,
