@@ -46,6 +46,7 @@ class CasinoSession:
             '1326': OneThreeTwoSix,
             '148': OneFourEight,
             'manhattan': Manhattan,
+            'two_up_two_down': TwoUpTwoDown,
             'standard_guetting': StandardGuetting,
             'optimal_guetting': OptimalGuetting,
             'labouchere': Labouchere,

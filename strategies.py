@@ -125,38 +125,20 @@ class Paroli(BettingStrategy):
     def on_loss(self):
         self.reset_streak()
 
-# FIXME: I AM PROBABLY WRONG
-# A simpler version of this: https://www.888casino.com/blog/tier-et-tout
+# https://www.roulette17.com/systems/tier-et-tout/
 class TierEtTout(BettingStrategy):
     def __init__(self, session_instance): 
         super().__init__(session_instance)
         self.session.curr_bet = self.session.bet_unit * 3
 
     def setup(self): 
-         self.session.bet_unit = math.ceil(1/9 * self.session.bankroll)
+        self.session.bet_unit = math.ceil(self.session.bankroll / 9)
 
     def on_win(self):
         self.session.curr_bet = self.session.bet_unit * 3
 
     def on_loss(self):
         self.session.curr_bet = self.session.bet_unit * 6
-
-# General class for progression strategies
-class ProgressionStrategy(BettingStrategy):
-    def __init__(self, session_instance, progression):
-        super().__init__(session_instance)
-        self.session.curr_bet = progression[0] * self.session.bet_unit if isinstance(progression[0], (int, float)) else None
-        self.progression = progression
-        self.streak = 0
-
-    def on_win(self): 
-        self.streak = self.streak + 1 if self.streak < len(self.progression)-1 else 0
-
-    def on_loss(self):
-        self.streak = 0
-
-    def cleanup(self):
-        self.session.curr_bet = self.progression[self.streak] * self.session.bet_unit
 
 # https://www.roulette17.com/systems/hollandish/
 class Hollandish(BettingStrategy):
@@ -184,9 +166,26 @@ class Hollandish(BettingStrategy):
 # The classic hollandish progression [1, 3, 5, 6, 7, 9] (+2)
 class StandardHollandish(Hollandish): 
     def __init__(self, session_instance):
-        def progression_exp(session):
+        def expression(session):
                 session.curr_bet += self.session.bet_unit * 2
-        super().__init__(session_instance, progression_exp)
+        super().__init__(session_instance, expression)
+
+# General class for progression strategies
+class ProgressionStrategy(BettingStrategy):
+    def __init__(self, session_instance, progression):
+        super().__init__(session_instance)
+        self.session.curr_bet = progression[0] * self.session.bet_unit if isinstance(progression[0], (int, float)) else None
+        self.progression = progression
+        self.streak = 0
+
+    def on_win(self): 
+        self.streak = self.streak + 1 if self.streak < len(self.progression)-1 else 0
+
+    def on_loss(self):
+        self.streak = 0
+
+    def cleanup(self):
+        self.session.curr_bet = self.progression[self.streak] * self.session.bet_unit
 
 # The classic 1-3-2-6 baccarat and roulette progression
 class OneThreeTwoSix(ProgressionStrategy):
@@ -228,6 +227,27 @@ class Manhattan(ProgressionStrategy):
 
     def cleanup(self):
         self.session.curr_bet = (self.progression[self.pointer] + self.streak) * self.session.bet_unit
+
+# https://www.roulette17.com/systems/2-up-2-down/
+class TwoUpTwoDown(ProgressionStrategy):
+    def __init__(self, session_instance):
+        super().__init__(session_instance, progression=list(range(1, 100)))
+        self.win_streak = 0
+        self.loss_streak = 0
+    
+    def on_win(self):
+        self.win_streak += 1 
+        self.loss_streak = 0
+        if self.win_streak == 2:
+            self.streak -= 1 if self.streak > 0 else 0
+            self.win_streak = 0
+
+    def on_loss(self):
+        self.loss_streak += 1
+        self.win_streak = 0 
+        if self.loss_streak == 2: 
+            self.streak += 1
+            self.loss_streak = 0
 
 # https://www.roulette17.com/systems/guetting/
 class GuettingProgressionStrategy(ProgressionStrategy):

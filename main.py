@@ -7,12 +7,12 @@ import seaborn as sns
 
 # TODO: possibility to choose between baccarat player and banker
 params = {
-  "sessions": 2**14, # 16384
-  "strat": "hollandish",
+  "sessions": 2**15, # 16384
+  "strat": "two_up_two_down",
   "data": {
     "baccarat": False,
     "bankroll": 50,
-    "bet_unit": 5,
+    "bet_unit": 2.5,
     "profit_goal": 100,
     "min_rounds": 0,
     "max_rounds": 0,
@@ -71,7 +71,7 @@ def print_stats_table(params, history):
 
 
 if __name__ == "__main__":
-  # history = simulate(params)
-  # print_stats_table(params, history)
+  history = simulate(params)
+  print_stats_table(params, history)
   # plot_bankroll_and_bet(data)
-  print(optimise(params, optimise_bet=False)) # optimise(params, optimise_bet=False, win_chance=0)
+  # print(optimise(params, optimise_bet=False)) # optimise(params, optimise_bet=False, win_chance=0)
