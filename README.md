@@ -12,17 +12,37 @@ It is obviously impossible to create a strategy that edges the house, but by usi
 
 ## Currently implemented strategies
 
-- Always bet on red
-- Martingale
+Many popular even money strategies are implemented, such as:
+
+- Bet on red
+- Martingale and Grand Martingale
 - Paroli
 - D'Alembert
-- Oscar's grind
-- Irfan's strategy
-- Variation of Irfan's strategy
+- Tier et Tout
+- Labouchere
+- Fibonacci
+- Johnson progression
+- Guetting
+- 1326
+- Manhattan
+
+These strategies are applied to default on roulette red/black odds, but the odds can be changed to Banker/Player in Baccarat, or even Blackjack.
+Additionally, every strategy can optionally be used to bet on dozes by using it in conjunction with `Irfans`'s strategy.
+
+Other roulette-only strategies are also available:
+
+- Kavouras
+- Four pillars
+- 666
+- Positional roulette
 
 ## What is Irfan's strategy?
 
 Irfan's strategy involves betting on 2 out of the 3 dozens. The 2 dozens chosen are the ones that did not appear in the last spin. If a loss in incurred, the bet is repeated on the same 2 dozens. Variations such as `irfans_with_martingale` and `irfans_with_paroli` are also available and follow the aforementioned strategies with the addition of Martingale or Paroli respectively.
+
+## Progession simulator
+
+TODO:
 
 ## Usage
 
