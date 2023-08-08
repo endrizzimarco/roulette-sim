@@ -40,11 +40,11 @@ result = prompt(
 
 
 def simulate(result, strat):
-  simulations = 2**20 # 16384
+  simulations = 2**16 # 16384
   reached_session_aim = 0
   for _ in range(simulations):
-    strategy = CasinoSession(bankroll=float(result[0]), bet_unit=float(result[1]), profit_goal=float(result[2]))
-    results = strategy.execute(strat)
+    strategy = CasinoSession(strategy=strat, bankroll=float(result[0]), bet_unit=float(result[1]), profit_goal=float(result[2]))
+    results = strategy.simulate()
     if max(results["bankroll"]) >= strategy.profit_goal: 
       reached_session_aim += 1
   return(reached_session_aim/simulations * 100)

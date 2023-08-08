@@ -1,5 +1,6 @@
 from strategies import *
 import random
+import copy
 
 
 class Game:
@@ -19,7 +20,7 @@ class Game:
 
 
 class CasinoSession: 
-    def __init__(self, bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, table_limits=0, baccarat=False):
+    def __init__(self, strategy='always_red', bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, table_limits=0, baccarat=False):
         self.bankroll = bankroll
         self.bet_unit = bet_unit
         self.curr_bet = bet_unit
@@ -29,10 +30,9 @@ class CasinoSession:
         self.profit_goal = profit_goal if profit_goal else float('inf')
         # meta
         self.game = Game(baccarat=baccarat, american=american)
-        self.strategy = None
         self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
         self.round = 1
-
+        # strategies
         self.strategies = {
             'always_red': AlwaysRed, 
             'irfans': Irfans,
@@ -58,17 +58,20 @@ class CasinoSession:
             'sixsixsix': SixSixSix,
             'positional_roulette': PositionalRoulette,
         }
+        self.strategy = self.strategies[strategy](self)
 
-    def execute(self, strategy='always_red'):
-        if not self.strategy: 
-            self.strategy = self.strategies[strategy](self)
-
+    def simulate(self):
         while self.should_continue(self.strategy):
+            self.tick()
+        return self.history
+
+    def tick(self):
+        if self.should_continue(self.strategy):
             roll = self.game.roll()
             self.strategy.execute({"pocket": roll[0], "color": roll[1]})
             self.update_history(roll)
             self.round += 1
-        return self.history
+        return self
 
     def should_continue(self, strategy):
         # Check if the bankroll is greater than zero and less than the profit goal.
@@ -113,8 +116,14 @@ class CasinoSession:
             self.curr_bet = self.bankroll
 
 
-def simulate(params):
-    history = {
+def update_history(history, session):
+    history["bankrolls"].append(session["bankroll"])
+    history["bets"].append(session["bets"])
+    history["wl"].append(session["wl"])
+    history["progressions"].append(session["progression"])
+
+def simulate(params, continue_session=None):
+    sim_history = {
         "bankrolls": [],
         "bets": [], 
         "success_rate": 0, 
@@ -124,17 +133,16 @@ def simulate(params):
 
     # Execute every session sequentially
     for _ in range(params["sessions"]):
-        session = CasinoSession(**params["data"]).execute(params["strat"])
-        history["bankrolls"].append(session["bankroll"])
-        history["bets"].append(session["bets"])
-        history["wl"].append(session["wl"])
-        history["progressions"].append(session["progression"])
+        session = CasinoSession(**params["data"]) if not continue_session else copy.deepcopy(continue_session)
+        simulation = session.simulate()
+        update_history(sim_history, simulation)
+
 
     # Calculate success rate
-    won_sessions = sum(session[-1] >= params["data"]["profit_goal"] for session in history["bankrolls"])
-    history["success_rate"] = won_sessions / params["sessions"] * 100
+    won_sessions = sum(session[-1] >= params["data"]["profit_goal"] for session in sim_history["bankrolls"])
+    sim_history["success_rate"] = won_sessions / params["sessions"] * 100
 
-    return history
+    return sim_history
 
 
 def find_optimal_bet_size(params):

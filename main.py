@@ -8,15 +8,15 @@ import seaborn as sns
 # TODO: possibility to choose between baccarat player and banker
 params = {
   "sessions": 2**15, # 16384
-  "strat": "two_up_two_down",
   "data": {
+    "strategy": "always_red",
     "baccarat": False,
     "bankroll": 50,
     "bet_unit": 2.5,
     "profit_goal": 100,
     "min_rounds": 0,
     "max_rounds": 0,
-    "table_limits": 0,
+    "table_limits": 50,
   }
 }
 
@@ -66,7 +66,7 @@ def print_stats_table(params, history):
   print(history["wl"][-1])
   print("progression", history["progressions"][-1])
   print("bets", history["bets"][-1])
-  print(f"\nstrat: {params['strat']}, bankroll: £{bankroll}, bet: £{params['data']['bet_unit']}, session aim: £{profit_goal}")
+  print(f"\nstrat: {params['data']['strategy']}, bankroll: £{bankroll}, bet: £{params['data']['bet_unit']}, session aim: £{profit_goal}")
   print(stats_table)
 
 
