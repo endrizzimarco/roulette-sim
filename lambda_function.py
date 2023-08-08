@@ -1,19 +1,30 @@
+from simulate import simulate, optimise, CasinoSession
+import pickle
 import json
-from simulate import simulate, optimise
 
 def lambda_handler(event, _context):
-    params = default_params()
+    params = override_default(default_params(), event)
 
     match event.get("type"):
         case "simulate": 
+            if not params.get('session_instance'): 
+                session = CasinoSession(**params["data"])
+            else: 
+                session = pickle.loads(params["session_instance"])
+            state = session.tick()
+            results = pickle.dumps(state)
+
             params["sessions"] = 2**16, # 262144
             results = simulate(params)["success_rate"]
         case "optimise":
             params["sessions"] = 2**13, # 8192
             results = optimise(params)
         case _: 
-            results = {"error": "Invalid type"}
-
+            return {
+                'statusCode': 400,
+                'body': {"error": "Invalid type"}
+            }
+        
 
     return {
         'statusCode': 200,
@@ -25,7 +36,8 @@ def default_params():
     return {
         "type": "simulate",
         "session_instance": None,
-        "sim_data": {
+        "won": False,
+        "data": {
             "strategy": "optimal_guetting",
             "bankroll": 50,
             "bet_unit": 2.5,
@@ -48,3 +60,4 @@ def override_default(params, event):
             params[key].update(value)
         else:
             params[key] = value
+    return params

@@ -28,10 +28,12 @@ class CasinoSession:
         self.max_rounds = max_rounds
         self.table_limits = table_limits
         self.profit_goal = profit_goal if profit_goal else float('inf')
+
         # meta
         self.game = Game(baccarat=baccarat, american=american)
         self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
         self.round = 1
+
         # strategies
         self.strategies = {
             'always_red': AlwaysRed, 
@@ -65,10 +67,13 @@ class CasinoSession:
             self.tick()
         return self.history
 
-    def tick(self):
+    def tick(self, win=None):
         if self.should_continue(self.strategy):
             roll = self.game.roll()
-            self.strategy.execute({"pocket": roll[0], "color": roll[1]})
+            if win is not None: 
+                self.strategy.execute(override=win)
+            else:
+                self.strategy.execute({"pocket": roll[0], "color": roll[1]})
             self.update_history(roll)
             self.round += 1
         return self
