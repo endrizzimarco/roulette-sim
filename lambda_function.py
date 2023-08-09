@@ -1,23 +1,36 @@
 from simulate import simulate, optimise, CasinoSession
 import pickle
 import json
+import base64
 
 def lambda_handler(event, _context):
     params = override_default(default_params(), event)
 
-    match event.get("type"):
+    match params.get("type"):
         case "simulate": 
             if not params.get('session_instance'): 
                 session = CasinoSession(**params["data"])
             else: 
-                session = pickle.loads(params["session_instance"])
-            state = session.tick()
-            results = pickle.dumps(state)
+                # Decode the base64-encoded string to bytes
+                decoded_state = base64.b64decode(params['session_instance'])
+                
+                # Unpickle the decoded bytes
+                session = pickle.loads(decoded_state)
 
-            params["sessions"] = 2**16, # 262144
-            results = simulate(params)["success_rate"]
+            state = session.tick()
+            print()
+
+            params["sessions"] = 2**15 # 32768
+            results = {
+                "chance": simulate(params)["success_rate"],
+                "data": {
+                    "bankroll": session.bankroll,
+                    "last_bet": session.curr_bet,
+                    "round": session.round,
+                }, 
+                "state": base64.b64encode(pickle.dumps(state)).decode('utf-8')  # Encode to base64
+            }
         case "optimise":
-            params["sessions"] = 2**13, # 8192
             results = optimise(params)
         case _: 
             return {
@@ -34,6 +47,7 @@ def lambda_handler(event, _context):
 
 def default_params():
     return {
+        "sessions": 2**13,
         "type": "simulate",
         "session_instance": None,
         "won": False,
