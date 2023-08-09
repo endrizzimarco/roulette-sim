@@ -33,12 +33,12 @@ class BettingStrategy(ABC):
     def cleanup(self):
         pass
 
-    def execute(self, roll=None, override=False):
+    def execute(self, roll=None, override=None):
         self.setup()
         if self.session.round == 1:
             self.session.history['bets'].append(self.session.curr_bet)
 
-        if not override: 
+        if override is None: 
             win = self.even_odds_strat(roll) if not self.use_dozens else self.dozens_strat(roll)
         else:
             win = override
