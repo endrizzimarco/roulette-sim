@@ -70,7 +70,7 @@ def default_params():
 def override_default(params, event):
     for key, value in event.items():
         if key == "data":
-            params[key].update(value)
+            params[key].update(json.loads(value))
         else:
             params[key] = value
     return params
