@@ -18,7 +18,6 @@ def lambda_handler(event, _context):
                 session = pickle.loads(decoded_state)
 
             state = session.tick()
-            print()
 
             params["sessions"] = 2**15 # 32768
             results = {
