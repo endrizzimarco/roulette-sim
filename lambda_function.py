@@ -9,6 +9,8 @@ def lambda_handler(event, _context):
     params = override_default(default_params(), event)
 
     match params.get("type"):
+        case "get_strategies":
+            results =  CasinoSession().strategies.keys()
         case "simulate": 
             if not params.get('session_instance'): 
                 session = CasinoSession(**params["data"])
