@@ -10,7 +10,7 @@ def lambda_handler(event, _context):
 
     match params.get("type"):
         case "get_strategies":
-            results =  CasinoSession().strategies.keys()
+            results =  list(CasinoSession().strategies.keys())
         case "simulate": 
             if not params.get('session_instance'): 
                 session = CasinoSession(**params["data"])
