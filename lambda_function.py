@@ -24,13 +24,14 @@ def lambda_handler(event, _context):
             chance = simulate(params, session)["success_rate"]
             time2 = time.time()
 
-            params["sessions"] = 2**15 # 32768
+            params["sessions"] = 2**16 # 65536
             results = {
                 "data": {
                     "chance": chance,
                     "bankroll": session.bankroll,
                     "next_bet": session.curr_bet,
                     "round": session.round,
+                    "progression": session.strategy.progression,
                     "time": time2-time1
                 }, 
                 "state": base64.b64encode(pickle.dumps(session)).decode('utf-8')  # Encode to base64
