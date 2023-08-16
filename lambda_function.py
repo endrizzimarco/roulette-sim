@@ -55,12 +55,12 @@ def default_params():
         "won": False,
         "data": {
             "strategy": "optimal_guetting",
+            "game": "roulette_european",
             "bankroll": 50,
             "bet_unit": 2.5,
             "profit_goal": 100,
             "min_rounds": 0,
             "max_rounds": 0,
-            "baccarat": False,
             "table_limits": 0
             },
         "optimise_data": {
