@@ -28,7 +28,7 @@ def lambda_handler(event, _context):
                     "bankroll": session.bankroll,
                     "next_bet": session.curr_bet,
                     "round": session.round,
-                    "progression": session.strategy.progression,
+                    "progression": None if not hasattr(session.strategy, "progression") else session.strategy.progression,
                 }, 
                 "state": base64.b64encode(pickle.dumps(session)).decode('utf-8')  # Encode to base64
             }
