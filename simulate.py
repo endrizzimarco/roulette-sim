@@ -4,23 +4,31 @@ import copy
 
 
 class Game:
-    ROULETTE = [(0, 'Green'), (1, 'Red'), (2, 'Black'), (3, 'Red'), (4, 'Black'), (5, 'Red'),(6, 'Black'), (7, 'Red'), (8, 'Black'), (9, 'Red'), (10, 'Black'), (11, 'Black'), (12, 'Red'), (13, 'Black'), (14, 'Red'), (15, 'Black'), (16, 'Red'), (17, 'Black'), (18, 'Red'), (19, 'Red'), (20, 'Black'), (21, 'Red'), (22, 'Black'), (23, 'Red'), (24, 'Black'), (25, 'Red'), (26, 'Black'), (27, 'Red'), (28, 'Black'), (29, 'Black'), (30, 'Red'), (31, 'Black'), (32, 'Red'), (33, 'Black'), (34, 'Red'), (35, 'Black'), (36, 'Red'),]
     BACCARAT_ODDS = [50.68, 49.32] # [banker (no, viz), player]
-
-    def __init__(self, baccarat=False, american=False):
-        self.baccarat = baccarat
-        if american: 
+    BLACKJACK_ODDS = [49.75, 50.25] # [strategy, no_strategy]
+    BLACKJACK_NO_STRATEGY_ODDS = [49.00, 51.00] # [strategy, no_strategy]
+    def __init__(self, game):
+        self.ROULETTE = [(0, 'Green'), (1, 'Red'), (2, 'Black'), (3, 'Red'), (4, 'Black'), (5, 'Red'),(6, 'Black'), (7, 'Red'), (8, 'Black'), (9, 'Red'), (10, 'Black'), (11, 'Black'), (12, 'Red'), (13, 'Black'), (14, 'Red'), (15, 'Black'), (16, 'Red'), (17, 'Black'), (18, 'Red'), (19, 'Red'), (20, 'Black'), (21, 'Red'), (22, 'Black'), (23, 'Red'), (24, 'Black'), (25, 'Red'), (26, 'Black'), (27, 'Red'), (28, 'Black'), (29, 'Black'), (30, 'Red'), (31, 'Black'), (32, 'Red'), (33, 'Black'), (34, 'Red'), (35, 'Black'), (36, 'Red'),]
+        if game == 'roulette_american':
             self.ROULETTE += [(-1, 'Green')]
+        self.type = game
 
     def roll(self):
-        if self.baccarat:
-            return (None, random.choices(['Red', 'Black'], weights=self.BACCARAT_ODDS)[0])
+        if self.type.startswith('baccarat'):
+            weights = self.BACCARAT_ODDS
+            if self.type == 'baccarat_player':
+                weights = weights[::-1]
+        elif self.type.startswith('blackjack'):
+            weights = self.BLACKJACK_ODDS if not self.type == 'blackjack_no_strategy' else self.BLACKJACK_NO_STRATEGY_ODDS
         else: 
             return random.choice(self.ROULETTE)
 
+        return (None, random.choices(['Red', 'Black'], weights=weights)[0])
+
+
 
 class CasinoSession: 
-    def __init__(self, strategy='always_red', bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, american=False, table_limits=0, baccarat=False):
+    def __init__(self, strategy='always_red', bankroll=100, bet_unit=2.5, profit_goal=250, min_rounds=0, max_rounds=0, table_limits=0, game='roulette_european'):
         self.bankroll = bankroll
         self.bet_unit = bet_unit
         self.curr_bet = bet_unit
@@ -30,7 +38,7 @@ class CasinoSession:
         self.profit_goal = profit_goal if profit_goal else float('inf')
 
         # meta
-        self.game = Game(baccarat=baccarat, american=american)
+        self.game = Game(game)
         self.history = {'bankroll': [bankroll], 'bets': [], 'rolls': [], 'progression': [], 'wl': []}
         self.round = 1
 
@@ -101,7 +109,7 @@ class CasinoSession:
 
     def update_bankroll(self, win, dozens=False):
         if win:
-            self.bankroll += self.curr_bet if not self.game.baccarat else 0.95 * self.curr_bet
+            self.bankroll += self.curr_bet if not self.game.type == 'baccarat_banker' else 0.95 * self.curr_bet
             self.history['wl'].append('win')
         else:
             self.bankroll -= self.curr_bet if not dozens else 2 * self.curr_bet
